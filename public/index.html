@@ -462,13 +462,14 @@
       </div>
 
       <!-- VIRAL SHORT VIDEO SPOTLIGHT BANNER: HONEST AUDITED STATUS -->
-      <div class="glass-panel rounded-3xl p-5 border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-purple-950/30 to-indigo-950/40 flex flex-col md:flex-row items-center justify-between gap-5">
+      <!-- Spotlight Deliverable Banner (Viral Video v3.0 Remastered) -->
+      <div class="glass-panel rounded-3xl p-5 border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-purple-950/30 to-indigo-950/40 flex flex-col md:flex-row items-center justify-between gap-5">
         <div class="flex items-center gap-4">
           <!-- Video Thumbnail Preview -->
-          <div class="relative w-24 h-36 rounded-2xl overflow-hidden border border-rose-500/40 flex-shrink-0 shadow-xl group cursor-pointer" onclick="openDeliverableById('deliv-viral-remix-01')">
+          <div class="relative w-24 h-36 rounded-2xl overflow-hidden border border-emerald-500/40 flex-shrink-0 shadow-xl group cursor-pointer" onclick="openDeliverableById('deliv-viral-remastered-01')">
             <img src="/api/stream-image?path=/Users/quill/Documents/TÀI%20LIỆU%20DÙNG%20CHUNG%20AI/06_DU_LIEU_VA_MOCKS/VIDEOS/video_viral_ky_luat_thep_9_16_remix.jpg" alt="Viral Video Thumbnail" class="w-full h-full object-cover">
             <div class="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition">
-              <div class="w-9 h-9 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition">
+              <div class="w-9 h-9 rounded-full bg-emerald-500/90 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition">
                 <i data-lucide="play" class="w-4 h-4 fill-white ml-0.5"></i>
               </div>
             </div>
@@ -479,35 +480,37 @@
 
           <div class="space-y-1.5">
             <div class="flex items-center gap-2">
-              <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                Sản Phẩm Video 9:16
+              <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Sản Phẩm Video 9:16 Remaster v3.0
               </span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
-                ⚠️ CẦN CHỈNH SỬA (NEEDS_REVISION)
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                ✅ QC PASSED (95/100) — SẾP ĐÃ NGHIỆM THU
               </span>
             </div>
-            <h3 class="text-base font-extrabold text-white">[Viral Short 9:16] Kỷ Luật Thép — Biến Mất 6 Tháng (High-Retention Remix)</h3>
-            <p class="text-xs text-rose-200/90 leading-relaxed max-w-2xl bg-rose-950/40 p-2 rounded-xl border border-rose-500/20">
-              <strong>Kết luận kiểm toán độc lập của NV QC:</strong> Đã phát hiện nhạc nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai và giọng đọc macOS TTS thô sơ, chưa đạt tiêu chuẩn thẩm mỹ của Sếp. Đã chuyển trạng thái <code class="text-rose-300">NEEDS_REVISION</code> để remastering.
+            <h3 class="text-base font-extrabold text-white">[Viral Short 9:16 Remaster v3.0] Kỷ Luật Thép — Biến Mất 6 Tháng (Speech Thật)</h3>
+            <p class="text-xs text-emerald-200/90 leading-relaxed max-w-2xl bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/20">
+              <strong>Nghiệm thu Remaster v3.0 (TASK-100):</strong> Đã trích xuất speech thật từ video TikTok gốc, khử bỏ hoàn toàn BGM sóng sine 110Hz đơn âm của bản cũ v2.5, chuẩn hóa âm thanh -14 LUFS, khung hình dọc 1080x1920 sắc nét đạt chuẩn phân phối đa nền tảng.
             </p>
             <div class="flex items-center gap-3 text-[11px] text-slate-400 pt-1">
               <span>Định dạng: <strong class="text-white">1080x1920 (9:16)</strong></span>
               <span>·</span>
               <span>Dung lượng: <strong class="text-white">3.61 MB</strong></span>
               <span>·</span>
-              <span>Điểm QC: <strong class="text-rose-400">60/100</strong></span>
+              <span>Điểm QC: <strong class="text-emerald-400">95/100</strong></span>
+              <span>·</span>
+              <button onclick="openDeliverableById('deliv-viral-flawed-01')" class="text-rose-400 underline hover:text-rose-300">Xem bản lưu trữ lỗi v2.5 (TASK-99, 60/100)</button>
             </div>
           </div>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0 w-full md:w-auto">
-          <button onclick="openDeliverableById('deliv-viral-remix-01')" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white border border-white/10 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2">
-            <i data-lucide="play-circle" class="w-4 h-4 text-rose-400"></i>
-            <span>Xem Video Hiện Tại</span>
+          <button onclick="openDeliverableById('deliv-viral-remastered-01')" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+            <i data-lucide="play-circle" class="w-4 h-4 text-white"></i>
+            <span>Xem Video Remaster v3.0</span>
           </button>
-          <button onclick="setBossDirective('🎬 Dựng lại video viral 9:16 Kỷ Luật Thép với âm thanh speech thật, khử bỏ tiếng sine wave đơn âm')" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-2xl text-xs font-extrabold transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
-            <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-950"></i>
-            <span>Yêu Cầu Dựng Lại Ngay</span>
+          <button onclick="setBossDirective('🎬 Dựng video mới: Kỷ Luật Thép Tập 2 - 90 Ngày Thiết Lập Thói Quen (9:16)')" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/10 rounded-2xl text-xs font-semibold transition flex items-center justify-center gap-2">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-400"></i>
+            <span>Giao Tập Tiếp Theo</span>
           </button>
         </div>
       </div>
