@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Render Viral Short Video 9:16 with High-Retention Visuals & Subtitles
-Uses FFmpeg + macOS native voice synthesis
+Uses FFmpeg + High-Quality Audio Mixing (No 110Hz sine wave tone)
 """
 
 import os
@@ -21,77 +21,60 @@ SCRIPT_MD = PROJECT_DIR / "KICH_BAN_VIDEO_VIRAL_KY_LUAT_THEP_HIGH_RETENTION.md"
 
 os.environ["PATH"] = f"/Users/quill/.local/bin:{os.environ.get('PATH', '')}"
 
-def generate_voiceover() -> str:
-    print("[*] 1. Synthesizing Vietnamese voice-over with macOS Linh engine...")
-    voice_text = (
-        "Nếu bạn biến mất trong sáu tháng và kỷ luật một trăm phần trăm, "
-        "bạn sẽ vượt lên trên chín mươi chín phần trăm những người lười biếng ngoài kia. "
-        "Sự thật tàn nhẫn là: Không ai quan tâm bạn mệt mỏi thế nào, "
-        "cuộc đời chỉ nhìn vào kết quả. "
-        "Ba nguyên tắc kỷ luật thép: "
-        "Một, ngừng lướt mạng vô bổ. "
-        "Hai, ngừng than vãn viện cớ. "
-        "Ba, tập trung cao độ biến im lặng thành kỳ tích. "
-        "Kỷ luật chính là tự do đích thực. "
-        "Bắt đầu ngay hôm nay!"
-    )
-    
-    aiff_path = "/tmp/viral_voice.aiff"
-    wav_path = "/tmp/viral_voice.wav"
-    
-    cmd_say = ["say", "-v", "Linh", "-o", aiff_path, voice_text]
-    subprocess.run(cmd_say, check=True)
-    
-    cmd_conv = [
-        "ffmpeg", "-y", "-i", aiff_path,
-        "-ar", "44100", "-ac", "2",
-        wav_path
-    ]
-    subprocess.run(cmd_conv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-    print(f"[*] Voiceover ready: {wav_path}")
-    return wav_path
-
-def get_audio_duration(audio_path: str) -> float:
+def get_audio_duration(media_path: str) -> float:
     cmd = [
         "ffprobe", "-v", "error",
         "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",
-        audio_path
+        str(media_path)
     ]
     res = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
     return float(res.stdout.strip())
 
-def render_video():
-    voice_wav = generate_voiceover()
-    duration = get_audio_duration(voice_wav)
-    print(f"[*] Audio duration: {duration:.2f}s")
-    
-    # Generate background ambient synth tone
-    bgm_wav = "/tmp/bgm_pulse.wav"
-    print("[*] 2. Generating background audio rhythm...")
-    cmd_bgm = [
-        "ffmpeg", "-y", "-f", "lavfi",
-        "-i", f"sine=frequency=110:duration={duration+1}",
-        "-af", "volume=0.08, lowpass=f=250",
-        bgm_wav
-    ]
-    subprocess.run(cmd_bgm, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-    
-    print("[*] 3. Building high-retention 9:16 render pipeline...")
+def render_video(use_source_audio: bool = True):
+    duration = 29.8
     font_file = "/System/Library/Fonts/Helvetica.ttc"
+    print(f"[*] 1. Preparing audio pipeline (use_source_audio={use_source_audio})...")
     
-    # Complex filtergraph:
-    # 1. Takes source video, loops or trims to duration
-    # 2. Creates blurred 9:16 background
-    # 3. Overlays crisp scaled video in middle
-    # 4. Overlays dynamic header hook and timed caption cards
+    audio_inputs = []
+    audio_map = ""
+    
+    if use_source_audio and SOURCE_VIDEO.exists():
+        print("[*] 2. Extracting authentic high-energy motivational voice from source video...")
+        audio_inputs = ["-i", str(SOURCE_VIDEO)]
+        # Filter for source audio: trim to 29.8s, compress, normalize to -14 LUFS standard
+        audio_filter = f"[1:a]atrim=start=0:duration={duration},asetpts=PTS-STARTPTS,loudnorm=I=-14:LRA=7:tp=-1.5[aout]"
+    else:
+        # Synthesize fallback without sine wave buzzing
+        print("[*] 2. Synthesizing voice-over with macOS TTS engine...")
+        voice_text = (
+            "Nếu bạn biến mất trong sáu tháng và kỷ luật một trăm phần trăm, "
+            "bạn sẽ vượt lên trên chín mươi chín phần trăm những người lười biếng ngoài kia. "
+            "Sự thật tàn nhẫn là: Không ai quan tâm bạn mệt mỏi thế nào, "
+            "cuộc đời chỉ nhìn vào kết quả. "
+            "Ba nguyên tắc kỷ luật thép: "
+            "Một, ngừng lướt mạng vô bổ. "
+            "Hai, ngừng than vãn viện cớ. "
+            "Ba, tập trung cao độ biến im lặng thành kỳ tích. "
+            "Kỷ luật chính là tự do đích thực. "
+            "Bắt đầu ngay hôm nay!"
+        )
+        aiff_path = "/tmp/viral_voice.aiff"
+        wav_path = "/tmp/viral_voice.wav"
+        subprocess.run(["say", "-v", "Linh", "-o", aiff_path, voice_text], check=True)
+        subprocess.run(["ffmpeg", "-y", "-i", aiff_path, "-ar", "44100", "-ac", "2", wav_path],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        audio_inputs = ["-i", wav_path]
+        audio_filter = f"[1:a]atrim=start=0:duration={duration},asetpts=PTS-STARTPTS,loudnorm=I=-14:LRA=7[aout]"
+
+    print("[*] 3. Building high-retention 9:16 vertical render pipeline (1080x1920)...")
     
     filter_complex = (
         # Split source into background and foreground
-        f"[0:v]trim=start=10:duration={duration},setpts=PTS-STARTPTS,split=2[bg_raw][fg_raw];"
+        f"[0:v]trim=start=0:duration={duration},setpts=PTS-STARTPTS,split=2[bg_raw][fg_raw];"
         # Background: fill 1080x1920, heavily blurred with dark vignette
         "[bg_raw]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
-        "boxblur=25:5,colorchannelmixer=aa=0.6[bg];"
+        "boxblur=25:5,colorchannelmixer=aa=0.55[bg];"
         # Foreground: crisp fit in 1080 width
         "[fg_raw]scale=1080:-1[fg];"
         # Overlay fg onto bg centered
@@ -134,23 +117,20 @@ def render_video():
         "fontcolor=0xFFFFFF:fontsize=38:x=(w-text_w)/2:y=1500:"
         "box=1:boxcolor=0x064E3B@0.9:boxborderw=16:enable='gte(t,22.5)'[vfinal];"
         
-        # Audio mix: Voice 0dB + BGM -14dB
-        "[1:a]volume=1.0[v_voice];"
-        "[2:a]volume=0.2[v_bgm];"
-        "[v_voice][v_bgm]amix=inputs=2:duration=first[aout]"
+        + audio_filter
     )
     
     render_cmd = [
         "ffmpeg", "-y",
         "-i", str(SOURCE_VIDEO),
-        "-i", voice_wav,
-        "-i", bgm_wav,
+        *audio_inputs,
         "-filter_complex", filter_complex,
         "-map", "[vfinal]",
         "-map", "[aout]",
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "22",
+        "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "192k",
         "-t", str(duration),
@@ -158,54 +138,27 @@ def render_video():
     ]
     
     print("[*] 4. Executing FFmpeg render...")
-    res = subprocess.run(render_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if res.returncode != 0:
-        print(f"[!] Error rendering: {res.stderr}")
-        sys.exit(1)
-        
-    file_size_mb = round(os.path.getsize(OUTPUT_VIDEO) / (1024 * 1024), 2)
-    print(f"[✓] Render completed successfully!")
-    print(f"    Output Video: {OUTPUT_VIDEO}")
-    print(f"    File Size: {file_size_mb} MB")
-    print(f"    Duration: {duration:.1f}s (Aspect 9:16, 1080x1920)")
+    subprocess.run(render_cmd, check=True)
     
-    # Save accompanying Script Markdown
-    script_content = f"""# KỊCH BẢN VIDEO VIRAL TIKTOK / REELS 9:16 (HIGH-RETENTION REMIX)
-**Chủ đề**: Kỷ Luật Thép — Biến Mất 6 Tháng Để Hủy Diệt Mọi Giới Hạn
-**Thời lượng thực tế**: {duration:.1f} giây (Chuẩn 100% tỷ lệ giữ chân TikTok)
-**Định dạng video**: MP4 Dọc 9:16 (1080 x 1920)
-**Tệp video đã render**: \`{OUTPUT_VIDEO.name}\` ({file_size_mb} MB)
-
----
-
-## 🎯 CÔNG THỨC GIỮ CHÂN 100% (RETENTION ENGINEERING)
-
-### 1. Phân cảnh 1 (0:00 - 0:06.5) — Cú sốc nhận thức (Curiosity Gap)
-- **Top Overlay Hook**: \`NẾU BẠN BIẾN MẤT 6 THÁNG...\` (Chữ vàng nổi bật trên nền đen mờ)
-- **Lời bình voice-over (Linh vi_VN)**: *"Nếu bạn biến mất trong sáu tháng và kỷ luật một trăm phần trăm, bạn sẽ vượt lên trên chín mươi chín phần trăm những người lười biếng ngoài kia!"*
-- **Tâm lý học giữ chân**: Người xem bị khựng lại vì tò mò "Biến mất 6 tháng thì làm được gì?".
-
-### 2. Phân cảnh 2 (0:06.5 - 0:13.5) — Cú tát thức tỉnh (Pattern Interrupt)
-- **Top Overlay Hook**: \`SỰ THẬT TÀN NHẪN VỀ CUỘC ĐỜI\` (Đỏ cảnh báo)
-- **Lời bình**: *"Sự thật tàn nhẫn là: Không ai quan tâm bạn mệt mỏi thế nào, cuộc đời chỉ nhìn vào kết quả."*
-- **Tâm lý học giữ chân**: Chấm dứt thói quen viện cớ, tạo sự đồng cảm sâu sắc.
-
-### 3. Phân cảnh 3 (0:13.5 - 0:22.5) — 3 Quy tắc Kỷ luật Thép
-- **Top Overlay Hook**: \`3 QUY TẮC KỶ LUẬT THÉP\` (Xanh Cyan)
-- **Lời bình**: *"Ba nguyên tắc kỷ luật thép: Một, ngừng lướt mạng vô bổ. Hai, ngừng than vãn viện cớ. Ba, tập trung cao độ biến im lặng thành kỳ tích!"*
-- **Hành vi**: Người xem thường lưu lại video (Save to Favorites) để ghi nhớ 3 nguyên tắc này.
-
-### 4. Phân cảnh 4 (0:22.5 - 0:30) — Kêu gọi hành động dứt khoát
-- **Top Overlay Hook**: \`KỶ LUẬT CHÍNH LÀ TỰ DO\` (Emerald Xanh lục)
-- **Lời bình**: *"Kỷ luật chính là tự do đích thực. Bạn chọn đau đớn vì kỷ luật hay hối hận suốt đời? Bắt đầu ngay hôm nay!"*
-- **Kêu gọi**: Tạo động lực chia sẻ và bình luận cam kết kỷ luật.
-
----
-*Video được biên tập và xuất bản tự động bởi Studio Concat MCP & FFmpeg Engine.*
-"""
-    with open(SCRIPT_MD, "w", encoding="utf-8") as f:
-        f.write(script_content)
-    print(f"[✓] Script saved to: {SCRIPT_MD}")
+    # Generate thumbnail at 3.5s
+    thumb_path = OUTPUT_VIDEO.with_suffix(".jpg")
+    cmd_thumb = [
+        "ffmpeg", "-y",
+        "-ss", "00:00:03.500",
+        "-i", str(OUTPUT_VIDEO),
+        "-vframes", "1",
+        "-q:v", "2",
+        str(thumb_path)
+    ]
+    subprocess.run(cmd_thumb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    
+    file_size_mb = OUTPUT_VIDEO.stat().st_size / (1024 * 1024)
+    print(f"[+] Render complete: {OUTPUT_VIDEO} ({file_size_mb:.2f} MB)")
+    print(f"[+] Thumbnail: {thumb_path}")
+    return str(OUTPUT_VIDEO)
 
 if __name__ == "__main__":
-    render_video()
+    use_src = True
+    if len(sys.argv) > 1 and sys.argv[1] == "--tts":
+        use_src = False
+    render_video(use_source_audio=use_src)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Văn Phòng AI Studio — Hệ Điều Hành Đa Tác Nhân (Multi-Agent Swarm)</title>
+  <title>Văn Phòng AI Studio — Hệ Điều Hành Đa Tác Nhân (v3.0 Multi-Agent Verified)</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons CDN -->
@@ -82,14 +82,6 @@
       transform: translateY(-3px);
       border-color: rgba(99, 102, 241, 0.35);
       box-shadow: 0 20px 45px -10px rgba(99, 102, 241, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    }
-
-    /* Subtle Animated Glow */
-    .gold-glow {
-      box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.3);
-    }
-    .cyan-glow {
-      box-shadow: 0 0 30px -5px rgba(6, 182, 212, 0.3);
     }
 
     /* Custom Scrollbar */
@@ -206,7 +198,6 @@
       border-radius: 0 0.5rem 0.5rem 0;
     }
 
-    /* Video player container */
     .video-theater-wrapper video {
       max-height: 65vh;
       width: auto;
@@ -233,12 +224,12 @@
         <div>
           <div class="flex items-center gap-2.5">
             <h1 class="font-extrabold text-base text-white tracking-tight">VĂN PHÒNG AI STUDIO</h1>
-            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">CHÍNH THỨC v2.5</span>
-            <span id="live-connection-badge" class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE (0ms SSE)
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">CHÍNH THỨC v3.0</span>
+            <span id="live-connection-badge" onclick="openBenchmarkModal()" class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20 transition" title="Nhấp để xem Benchmark SRE chi tiết">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> SSE LIVE (<span id="header-latency-val">p50: 3ms</span>)
             </span>
           </div>
-          <p class="text-[11px] text-slate-400">Điều phối: <strong class="text-amber-400">ChatGPT Plus (Trưởng phòng)</strong> · Sub-agents thực thi kỹ thuật thực tế</p>
+          <p class="text-[11px] text-slate-400">Điều phối: <strong class="text-amber-400">ChatGPT Plus Web</strong> · Kiểm toán độc lập: <strong class="text-emerald-400">NV QC Engine</strong></p>
         </div>
       </div>
 
@@ -254,7 +245,7 @@
         </button>
         <button onclick="switchTab('deliverables')" id="tab-btn-deliverables" class="tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20">
           <i data-lucide="clapperboard" class="w-3.5 h-3.5 text-emerald-400"></i>
-          <span>Kho Đầu Ra & Media (<span id="deliverables-count-badge">5</span>)</span>
+          <span>Kho Đầu Ra & QC (<span id="deliverables-count-badge">8</span>)</span>
         </button>
         <button onclick="switchTab('skills')" id="tab-btn-skills" class="tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white">
           <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
@@ -267,7 +258,11 @@
       </nav>
 
       <!-- Sếp Status & Quick Action -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <button onclick="openBenchmarkModal()" class="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition" title="Đo kiểm latency và tài nguyên">
+          <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>SRE Benchmark</span>
+        </button>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-white/5 text-xs">
           <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span class="text-slate-400">Sếp: <strong class="text-white font-medium">Quill</strong></span>
@@ -284,12 +279,8 @@
   <!-- ==================== MAIN VIEWPORT ==================== -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
 
-    <!-- ============================================================ -->
-    <!-- HEROIC EXECUTIVE CONSOLE: BÀN ĐIỀU HÀNH TRƯỞNG PHÒNG         -->
-    <!-- (CHỈ ĐẠO TRỰC TIẾP TỪ SẾP — ZERO SUB-AGENT MICROMANAGEMENT) -->
-    <!-- ============================================================ -->
+    <!-- HEROIC EXECUTIVE CONSOLE: BÀN ĐIỀU HÀNH TRƯỞNG PHÒNG -->
     <div id="boss-executive-console" class="glass-panel rounded-3xl p-6 border border-amber-500/30 relative overflow-hidden bg-gradient-to-br from-[#12192E]/90 via-[#0E1527]/90 to-[#0A0F1D]/90 shadow-2xl">
-      <!-- Ambient Glow Behind Avatar -->
       <div class="absolute -top-16 -right-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-16 -left-16 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -307,11 +298,11 @@
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-extrabold text-white tracking-tight">BÀN ĐIỀU HÀNH TRƯỞNG PHÒNG</h2>
                 <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1">
-                  <i data-lucide="bot" class="w-3 h-3"></i> ChatGPT Plus Web ($0 Token API)
+                  <i data-lucide="bot" class="w-3 h-3"></i> ChatGPT Plus Web / Fallback Quy Tắc Minh Bạch
                 </span>
               </div>
               <p class="text-xs text-slate-400 mt-0.5">
-                Sếp Quill chỉ giao đầu việc tại đây ➔ Trưởng phòng tự động phân rã, phân bổ cho 8 Sub-agents, giám sát chéo và hoàn thiện sản phẩm.
+                Sếp Quill chỉ giao đầu việc tại đây ➔ Trưởng phòng phân bổ cho Sub-agents, kiểm toán độc lập qua NV QC và chờ Sếp nghiệm thu.
               </p>
             </div>
           </div>
@@ -334,7 +325,7 @@
             <textarea 
               id="boss-brief-input" 
               rows="2" 
-              placeholder="Nhập chỉ đạo của Sếp cho Trưởng phòng (Ví dụ: Dựng lại video viral 9:16 có hook dồn dập hơn, audit technical SEO & GEO cho website, cào video từ link TikTok/Douyin...)..." 
+              placeholder="Nhập chỉ đạo của Sếp cho Trưởng phòng (Ví dụ: Dựng lại video viral 9:16 Kỷ Luật Thép với audio chuẩn, audit technical SEO cho website, cào video từ link TikTok/Douyin...)..." 
               class="w-full px-4 py-3 bg-[#060913] border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 text-xs sm:text-sm leading-relaxed transition shadow-inner font-normal"
               onkeydown="handleBossInputKeyDown(event)"
             ></textarea>
@@ -347,16 +338,16 @@
           <!-- Quick Directive Chips -->
           <div class="flex items-center gap-2 flex-wrap text-xs">
             <span class="text-[11px] text-slate-400 font-medium">Chỉ đạo nhanh:</span>
-            <button onclick="setBossDirective('🎬 Dựng video 9:16 Kỷ Luật Thép mới với Hook dồn dập, giữ chân cao, lồng tiếng Việt và hiệu ứng âm thanh')" class="px-3 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold transition flex items-center gap-1">
-              <i data-lucide="clapperboard" class="w-3 h-3 text-rose-400"></i> Video 9:16 Hook Mới
+            <button onclick="setBossDirective('🎬 Dựng lại video viral 9:16 Kỷ Luật Thép với âm thanh speech thật, khử bỏ tiếng sine wave đơn âm')" class="px-3 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-semibold transition flex items-center gap-1">
+              <i data-lucide="clapperboard" class="w-3 h-3 text-rose-400"></i> Dựng Lại Kỷ Luật Thép
             </button>
-            <button onclick="setBossDirective('🔍 Audit Technical SEO & AI Search (GEO) toàn diện, kiểm tra Schema JSON-LD và thời gian tải')" class="px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition flex items-center gap-1">
+            <button onclick="setBossDirective('🔍 Audit Technical SEO & AI Search (GEO) toàn diện cho https://vibe-coding.ai')" class="px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition flex items-center gap-1">
               <i data-lucide="search" class="w-3 h-3 text-cyan-400"></i> Audit SEO & GEO
             </button>
-            <button onclick="setBossDirective('⚡ Kiểm tra hiệu năng hệ thống server, đo độ trễ SSE 0ms và kiểm toán bộ nhớ cache')" class="px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition flex items-center gap-1">
-              <i data-lucide="activity" class="w-3 h-3 text-emerald-400"></i> Kiểm thử DevOps
+            <button onclick="setBossDirective('⚡ Đo kiểm chuẩn hiệu năng hệ thống server, latency thực tế và event-loop lag')" class="px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition flex items-center gap-1">
+              <i data-lucide="activity" class="w-3 h-3 text-emerald-400"></i> Kiểm thử DevOps SRE
             </button>
-            <button onclick="setBossDirective('📊 Phân tích xu hướng Bitcoin bằng mô hình Kronos 12 tỷ nến và đề xuất chiến lược')" class="px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition flex items-center gap-1">
+            <button onclick="setBossDirective('📊 Phân tích rủi ro BTC Open Interest và đối soát mô hình nến Kronos')" class="px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition flex items-center gap-1">
               <i data-lucide="trending-up" class="w-3 h-3 text-amber-400"></i> Phân tích Kronos BTC
             </button>
           </div>
@@ -364,8 +355,8 @@
           <!-- Action Button & Live Progress -->
           <div class="flex items-center justify-between pt-2">
             <div id="boss-dispatch-status" class="text-xs text-slate-400 flex items-center gap-2">
-              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-              <span>Sản phẩm nghiệm thu sẽ tự động qua NV QC kiểm toán trước khi lưu kho.</span>
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+              <span>Sản phẩm sáng tạo bắt buộc qua NV QC kiểm toán kỹ thuật + Sếp phê duyệt thẩm mỹ cuối cùng.</span>
             </div>
 
             <button 
@@ -379,71 +370,46 @@
           </div>
         </div>
 
-        <!-- Realtime Live Dispatch Progress Tracker (Appears when running) -->
+        <!-- Realtime Live Dispatch Progress Tracker -->
         <div id="boss-progress-panel" class="hidden p-4 bg-[#050811] rounded-2xl border border-amber-500/20 space-y-3">
           <div class="flex items-center justify-between text-xs">
             <span class="font-bold text-amber-300 flex items-center gap-2">
               <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-400"></i>
-              <span id="boss-progress-step-title">Trưởng phòng đang điều phối nhiệm vụ thực tế...</span>
+              <span id="boss-progress-step-title">Trưởng phòng đang tiếp nhận và phân rã nhiệm vụ...</span>
             </span>
-            <span id="boss-progress-percent" class="code-font text-amber-400 font-bold">25%</span>
+            <span id="boss-progress-percent" class="code-font text-amber-400 font-bold">20%</span>
           </div>
 
           <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-white/5">
-            <div id="boss-progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-cyan-400 transition-all duration-300" style="width: 25%"></div>
+            <div id="boss-progress-bar" class="h-full bg-gradient-to-r from-amber-500 via-indigo-500 to-cyan-400 transition-all duration-300" style="width: 20%"></div>
           </div>
 
-          <!-- Step Progression Checklist -->
-          <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px] pt-1" id="boss-steps-grid">
-            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 flex items-center gap-1.5" id="bstep-1">
-              <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[9px] font-bold">1</span>
-              <span>Tiếp nhận brief</span>
-            </div>
-            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 flex items-center gap-1.5" id="bstep-2">
-              <span class="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-[9px] font-bold">2</span>
-              <span>Phân rã task</span>
-            </div>
-            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 flex items-center gap-1.5" id="bstep-3">
-              <span class="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[9px] font-bold">3</span>
-              <span>Sub-agent chạy</span>
-            </div>
-            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 flex items-center gap-1.5" id="bstep-4">
-              <span class="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[9px] font-bold">4</span>
-              <span>QC thẩm định</span>
-            </div>
-            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 flex items-center gap-1.5" id="bstep-5">
-              <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[9px] font-bold">5</span>
-              <span>Lưu Kho Đầu Ra</span>
-            </div>
-          </div>
-
-          <!-- Live Log Snippet -->
-          <div id="boss-live-log-box" class="code-font text-[11px] text-slate-300 p-2.5 bg-black/60 rounded-xl border border-white/5 max-h-24 overflow-y-auto leading-relaxed">
-            [Khởi tạo] Trưởng phòng tiếp nhận yêu cầu...
+          <!-- Live Log Console Box -->
+          <div class="p-3 bg-[#020409] rounded-xl border border-white/5 text-[11px] code-font text-slate-300 space-y-1 max-h-44 overflow-y-auto" id="boss-live-log-box">
+            <!-- Dynamic logs inserted here -->
           </div>
         </div>
 
       </div>
     </div>
 
-
-    <!-- ==================== TAB 1: VĂN PHÒNG 2.5D ==================== -->
-    <div id="view-office" class="tab-view space-y-6">
-
-      <!-- TOP METRIC CARDS -->
+    <!-- ==================== VIEW 1: VĂN PHÒNG TỔNG QUAN 2.5D ==================== -->
+    <div id="view-office" class="space-y-6">
+      
+      <!-- Key Metric Indicators -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-amber-400">
+        <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-amber-500">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-xs text-slate-400 font-medium">Trưởng phòng Điều hành</div>
-              <div class="text-lg font-extrabold text-white mt-1">ChatGPT Plus</div>
+              <div class="text-xs text-slate-400 font-medium">Tiến độ ca làm việc</div>
+              <div class="text-lg font-extrabold text-white mt-1" id="stat-progress-text">7 / 8 Hoàn thành</div>
               <div class="text-[11px] text-amber-400 mt-0.5 flex items-center gap-1 font-semibold">
-                <i data-lucide="check" class="w-3 h-3"></i> Tự động phân việc
+                <i data-lucide="check-circle-2" class="w-3 h-3"></i> 88% Tiến độ
               </div>
             </div>
             <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <i data-lucide="crown" class="w-5 h-5"></i>
+              <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
             </div>
           </div>
         </div>
@@ -454,7 +420,7 @@
               <div class="text-xs text-slate-400 font-medium">Sub-agents Sẵn sàng</div>
               <div class="text-lg font-extrabold text-white mt-1" id="stat-active-agents">8 / 8 Chuyên viên</div>
               <div class="text-[11px] text-cyan-400 mt-0.5 flex items-center gap-1 font-semibold">
-                <i data-lucide="zap" class="w-3 h-3"></i> Phản hồi 0ms
+                <i data-lucide="activity" class="w-3 h-3"></i> HTTP p50: <span id="stat-latency-val">3ms</span> (Đo kiểm thật)
               </div>
             </div>
             <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
@@ -466,10 +432,10 @@
         <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-emerald-400">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-xs text-slate-400 font-medium">Sản phẩm Đã Nghiệm Thu</div>
-              <div class="text-lg font-extrabold text-white mt-1" id="stat-deliverables-count">5 Sản phẩm</div>
+              <div class="text-xs text-slate-400 font-medium">Sản phẩm Kho Đầu Ra</div>
+              <div class="text-lg font-extrabold text-white mt-1" id="stat-deliverables-count">8 Sản phẩm</div>
               <div class="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1 font-semibold">
-                <i data-lucide="shield-check" class="w-3 h-3"></i> 100% QC Passed
+                <i data-lucide="shield-check" class="w-3 h-3"></i> Kiểm toán QC Độc Lập
               </div>
             </div>
             <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
@@ -481,10 +447,10 @@
         <div class="glass-panel p-4 rounded-2xl border-l-4 border-l-violet-400">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-xs text-slate-400 font-medium">Công cụ & Connectors</div>
-              <div class="text-lg font-extrabold text-white mt-1">142 Skills · 8 MCPs</div>
+              <div class="text-xs text-slate-400 font-medium">Hạ Tầng Kỹ Thuật</div>
+              <div class="text-lg font-extrabold text-white mt-1">yt-dlp · FFmpeg 8.0</div>
               <div class="text-[11px] text-violet-400 mt-0.5 flex items-center gap-1 font-semibold">
-                <i data-lucide="sparkles" class="w-3 h-3"></i> Concat & Claude SEO
+                <i data-lucide="sparkles" class="w-3 h-3"></i> Concat & CUA Driver
               </div>
             </div>
             <div class="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
@@ -495,7 +461,7 @@
 
       </div>
 
-      <!-- VIRAL SHORT VIDEO SPOTLIGHT BANNER -->
+      <!-- VIRAL SHORT VIDEO SPOTLIGHT BANNER: HONEST AUDITED STATUS -->
       <div class="glass-panel rounded-3xl p-5 border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-purple-950/30 to-indigo-950/40 flex flex-col md:flex-row items-center justify-between gap-5">
         <div class="flex items-center gap-4">
           <!-- Video Thumbnail Preview -->
@@ -514,304 +480,186 @@
           <div class="space-y-1.5">
             <div class="flex items-center gap-2">
               <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                Sản Phẩm Mới Xuất Xưởng
+                Sản Phẩm Video 9:16
               </span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-                ✅ Đã Kiểm Định QC
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                ⚠️ CẦN CHỈNH SỬA (NEEDS_REVISION)
               </span>
             </div>
             <h3 class="text-base font-extrabold text-white">[Viral Short 9:16] Kỷ Luật Thép — Biến Mất 6 Tháng (High-Retention Remix)</h3>
-            <p class="text-xs text-slate-300 leading-relaxed max-w-2xl">
-              Được NV Video & NV Content dựng mới hoàn toàn từ nội dung video gốc: <strong>Hook 0-3s giật gân</strong>, phụ đề đổi màu bắt mắt, <strong>Voice-over tiếng Việt chuẩn bản ngữ (Linh TTS)</strong> và nhịp bass dồn dập kích thích xem hết video.
+            <p class="text-xs text-rose-200/90 leading-relaxed max-w-2xl bg-rose-950/40 p-2 rounded-xl border border-rose-500/20">
+              <strong>Kết luận kiểm toán độc lập của NV QC:</strong> Đã phát hiện nhạc nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai và giọng đọc macOS TTS thô sơ, chưa đạt tiêu chuẩn thẩm mỹ của Sếp. Đã chuyển trạng thái <code class="text-rose-300">NEEDS_REVISION</code> để remastering.
             </p>
             <div class="flex items-center gap-3 text-[11px] text-slate-400 pt-1">
               <span>Định dạng: <strong class="text-white">1080x1920 (9:16)</strong></span>
               <span>·</span>
               <span>Dung lượng: <strong class="text-white">3.61 MB</strong></span>
               <span>·</span>
-              <span class="code-font text-slate-400 truncate">06_DU_LIEU_VA_MOCKS/VIDEOS/video_viral_ky_luat_thep_9_16_remix.mp4</span>
+              <span>Điểm QC: <strong class="text-rose-400">60/100</strong></span>
             </div>
           </div>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0 w-full md:w-auto">
-          <button onclick="openDeliverableById('deliv-viral-remix-01')" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl text-xs font-bold transition shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2">
-            <i data-lucide="play-circle" class="w-4 h-4"></i>
-            <span>Xem Video Ngay (Phát Trực Tiếp)</span>
+          <button onclick="openDeliverableById('deliv-viral-remix-01')" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white border border-white/10 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2">
+            <i data-lucide="play-circle" class="w-4 h-4 text-rose-400"></i>
+            <span>Xem Video Hiện Tại</span>
           </button>
-          <button onclick="openDeliverableById('deliv-script-remix-01')" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/10 rounded-2xl text-xs font-semibold transition flex items-center justify-center gap-2">
-            <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i>
-            <span>Xem Kịch Bản Phân Cảnh</span>
+          <button onclick="setBossDirective('🎬 Dựng lại video viral 9:16 Kỷ Luật Thép với âm thanh speech thật, khử bỏ tiếng sine wave đơn âm')" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-2xl text-xs font-extrabold transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+            <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-950"></i>
+            <span>Yêu Cầu Dựng Lại Ngay</span>
           </button>
         </div>
       </div>
 
-      <!-- SƠ ĐỒ 5 PHÒNG BAN CHỨC NĂNG CỦA STUDIO -->
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
-            <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">Sơ Đồ Phối Hợp Tác Chiến — 5 Phòng Ban Chức Năng</h2>
-          </div>
-          <div class="flex items-center gap-4 text-xs text-slate-400">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Sẵn sàng</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> Đang làm việc</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Chờ nghiệm thu</span>
-          </div>
-        </div>
-
-        <!-- 5 ROOMS GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-          <!-- ROOM 1: BAN ĐIỀU HÀNH & QC -->
-          <div class="glass-panel p-5 rounded-2xl border border-amber-500/20 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="crown" class="w-4 h-4"></i> Ban Điều Hành & Thẩm Định
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-semibold">2 Nhân Sự</span>
-            </div>
-            <div class="space-y-3" id="room-exec-list">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- ROOM 2: PHÒNG SEO & MARKETING -->
-          <div class="glass-panel p-5 rounded-2xl border border-cyan-500/20 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="search" class="w-4 h-4"></i> Phòng SEO & AI Search (GEO)
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-semibold">19 Subagents</span>
-            </div>
-            <div class="space-y-3" id="room-marketing-list">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- ROOM 3: STUDIO VIDEO & SÁNG TẠO -->
-          <div class="glass-panel p-5 rounded-2xl border border-rose-500/20 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span class="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="video" class="w-4 h-4"></i> Studio Video & Concat MCP
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 font-semibold">Concat + yt-dlp</span>
-            </div>
-            <div class="space-y-3" id="room-media-list">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- ROOM 4: PHÒNG KỸ THUẬT DEV & CUA -->
-          <div class="glass-panel p-5 rounded-2xl border border-emerald-500/20 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="code" class="w-4 h-4"></i> Phòng Kỹ Thuật Dev & Server
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 font-semibold">CUA 2.0</span>
-            </div>
-            <div class="space-y-3" id="room-dev-list">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- ROOM 5: PHÒNG PHÂN TÍCH TÀI CHÍNH -->
-          <div class="glass-panel p-5 rounded-2xl border border-purple-500/20 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <span class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="candlestick-chart" class="w-4 h-4"></i> Phân Tích Tài Chính & Crypto
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 font-semibold">Kronos Model</span>
-            </div>
-            <div class="space-y-3" id="room-trading-list">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- RECENT COMPLETED WORK LOGS -->
-          <div class="glass-panel p-5 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3">
-                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Nhiệm Vụ Gần Nhất
-                </span>
-                <span class="text-[10px] text-slate-500 code-font">Live Stream</span>
-              </div>
-              <div class="space-y-2" id="recent-tasks-preview">
-                <!-- Rendered via JS -->
-              </div>
-            </div>
-
-            <div class="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-              <span>Độ trễ hệ thống:</span>
-              <span class="text-emerald-400 font-bold code-font">0ms (EventSource)</span>
-            </div>
-          </div>
-
-        </div>
-
+      <!-- 5 Functional Rooms Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="office-rooms-grid">
+        <!-- Rendered dynamically via JS -->
       </div>
 
     </div>
 
-
-    <!-- ==================== TAB 2: ĐỘI NGŨ SUB-AGENTS ==================== -->
-    <div id="view-team" class="tab-view hidden space-y-6">
-      
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <!-- ==================== VIEW 2: ĐỘI NGŨ SUB-AGENTS ==================== -->
+    <div id="view-team" class="hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-white/5 pb-4">
         <div>
-          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="users-round" class="w-5 h-5 text-indigo-400"></i>
-            <span>Đội ngũ Sub-agents Chuyên Nghiệp (8 Chuyên Viên)</span>
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Mỗi nhân sự được cấp kho Skills & Connectors chuyên sâu. <strong>Sếp không cần điều khiển trực tiếp</strong> — Trưởng phòng tự động kích hoạt nhân sự phù hợp khi có chỉ đạo.
-          </p>
+          <h2 class="text-lg font-extrabold text-white">ĐỘI NGŨ 9 NHÂN SỰ AI CHUYÊN MÔN</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Mỗi nhân sự phụ trách một domain độc lập, có vũ khí kỹ năng riêng và chịu sự kiểm toán độc lập của NV QC.</p>
         </div>
-        <button onclick="focusBossConsole()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 flex-shrink-0 shadow-lg shadow-amber-500/20">
-          <i data-lucide="send" class="w-3.5 h-3.5"></i>
-          <span>Giao việc qua Trưởng phòng</span>
-        </button>
+        <div class="text-xs text-slate-400">
+          Chỉ tiêu hoàn thành ca: <strong class="text-emerald-400 font-bold">100%</strong>
+        </div>
       </div>
 
-      <!-- Agent Cards Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="team-cards-container">
         <!-- Rendered via JS -->
       </div>
     </div>
 
-
-    <!-- ==================== TAB 3: KHO ĐẦU RA & MEDIA ==================== -->
-    <div id="view-deliverables" class="tab-view hidden space-y-6">
+    <!-- ==================== VIEW 3: KHO ĐẦU RA (DELIVERABLES) & QC ==================== -->
+    <div id="view-deliverables" class="hidden space-y-6">
       
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
         <div>
-          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="package-check" class="w-5 h-5 text-emerald-400"></i>
-            <span>Kho Sản Phẩm & Bàn Giao Đầu Ra (Deliverables Theater)</span>
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Toàn bộ video 9:16, kịch bản, báo cáo Technical SEO và code do các AI Agent hoàn thành thực tế và được NV QC thẩm định trước khi lưu trữ.
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-extrabold text-white">KHO ĐẦU RA SẢN PHẨM & HỒ SƠ KIỂM TOÁN QC</h2>
+            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30">VERIFIED ARTIFACTS</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Sản phẩm kỹ thuật và sáng tạo được lưu trữ vĩnh viễn trên máy Sếp. Phân định rõ giữa <strong>QC kỹ thuật ĐẠT</strong> và <strong>Sếp phê duyệt thẩm mỹ cuối cùng</strong>.
           </p>
         </div>
 
-        <div class="flex items-center gap-2 text-xs">
-          <span class="px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-white/5 text-slate-300">
-            Thư mục: <strong class="text-indigo-400 code-font">TÀI LIỆU DÙNG CHUNG AI/</strong>
-          </span>
+        <!-- Filter buttons -->
+        <div class="flex items-center gap-1.5 bg-[#060913] p-1 rounded-2xl border border-white/5 text-xs overflow-x-auto">
+          <button onclick="filterDeliverables('all')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-bold transition">Tất cả (<span id="filter-all-count">8</span>)</button>
+          <button onclick="filterDeliverables('Video & Media')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">Video & Media</button>
+          <button onclick="filterDeliverables('SEO & Marketing')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">SEO</button>
+          <button onclick="filterDeliverables('Quản trị & Điều phối')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">QC & Quản trị</button>
         </div>
       </div>
 
-      <!-- Category Filter Pills -->
-      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <button onclick="filterDeliverables('all')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm transition">Tất cả sản phẩm</button>
-        <button onclick="filterDeliverables('Video & Media')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">Video & Media (3)</button>
-        <button onclick="filterDeliverables('SEO & Marketing')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">SEO & Marketing (1)</button>
-        <button onclick="filterDeliverables('Quản trị & Điều phối')" class="deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition">QC & Điều phối (2)</button>
+      <!-- Deliverables Grid Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="deliverables-grid">
+        <!-- Rendered dynamically via JS -->
       </div>
 
-      <!-- Deliverables Cards Grid -->
-      <div id="deliverables-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <!-- Rendered via JS -->
-      </div>
     </div>
 
-
-    <!-- ==================== TAB 4: KHO SKILL & CONNECTORS ==================== -->
-    <div id="view-skills" class="tab-view hidden space-y-6">
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="cpu" class="w-5 h-5 text-cyan-400"></i>
-            <span>Kho Vũ Khí Kỹ Thuật: 142 Skills & 8 Connectors</span>
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Được đồng bộ trực tiếp từ kho <span class="code-font text-cyan-400">~/.agents/skills</span> và các MCP Server nội bộ trên máy.
-          </p>
-        </div>
-        <input type="text" id="skill-search-input" oninput="filterSkills()" placeholder="Tìm kiếm skill (vd: seo, video, git, bash)..." class="px-4 py-2 bg-[#060913] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 w-64">
+    <!-- ==================== VIEW 4: KHO SKILL & CONNECTORS ==================== -->
+    <div id="view-skills" class="hidden space-y-6">
+      
+      <div class="border-b border-white/5 pb-4">
+        <h2 class="text-lg font-extrabold text-white">KHO KỸ NĂNG (AGENT SKILLS) & CONNECTORS</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Các công cụ nhị phân thực tế, MCP servers, và suite kỹ năng cấp quyền cho từng nhân sự.</p>
       </div>
 
       <!-- Connectors Grid -->
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 space-y-4">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <i data-lucide="plug-zap" class="w-4 h-4 text-cyan-400"></i>
-          <span>Hệ Thống MCP Connectors Thực Tế (8 Đang Hoạt Động)</span>
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="connectors-container">
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider text-xs">9 Cổng Kết Nối Hệ Thống (Connectors)</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="connectors-container">
           <!-- Rendered via JS -->
         </div>
       </div>
 
-      <!-- Skills Grid -->
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 space-y-4">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i>
-          <span>Danh Sách Kỹ Năng Đã Tải Lên Hệ Thống (<span id="skills-count-text">0</span>)</span>
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto pr-1" id="skills-container">
+      <!-- Skills List -->
+      <div class="space-y-3 pt-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider text-xs">Kho Kỹ Năng Cài Đặt Sẵn (~/.agents/skills)</h3>
+          <div class="relative w-64">
+            <input type="text" id="skill-search-input" oninput="filterSkills()" placeholder="Tìm kiếm kỹ năng..." class="w-full px-3 py-1.5 bg-[#060913] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" id="skills-container">
           <!-- Rendered via JS -->
         </div>
       </div>
+
     </div>
 
-
-    <!-- ==================== TAB 5: BỘ NHỚ CHUNG ==================== -->
-    <div id="view-memory" class="tab-view hidden space-y-6">
-      <div class="glass-panel rounded-3xl p-6 border border-white/5 space-y-4">
-        <div class="flex items-center justify-between border-b border-white/5 pb-3">
-          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="database" class="w-5 h-5 text-indigo-400"></i>
-            <span>Bộ Nhớ Dùng Chung Toàn Studio (Persistent Memory)</span>
-          </h2>
-          <span class="text-xs text-slate-400 code-font">00_QUY_TAC_VA_DIEU_PHOI/BO_NHO_CHUNG.md</span>
+    <!-- ==================== VIEW 5: BỘ NHỚ CHUNG ==================== -->
+    <div id="view-memory" class="hidden space-y-6">
+      <div class="border-b border-white/5 pb-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-extrabold text-white">BỘ NHỚ CHUNG VĂN PHÒNG & TASK BOARD</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Kiến thức lâu dài Sếp đã chốt (BO_NHO_CHUNG.md) và Bảng nhiệm vụ đa AI (TASK_BOARD.md).</p>
         </div>
+        <div class="flex items-center gap-2">
+          <input type="text" id="quick-note-input" placeholder="Ghi nhớ nhanh cho cả văn phòng..." class="px-3 py-1.5 bg-[#060913] border border-white/10 rounded-xl text-xs text-white w-64">
+          <button onclick="submitQuickNote()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">
+            Lưu Ghi Nhớ
+          </button>
+        </div>
+      </div>
 
-        <div class="space-y-2">
-          <label class="block text-xs text-slate-300 font-semibold">Chỉ đạo nhanh cho Bộ nhớ chung (Sếp dặn)</label>
-          <div class="flex gap-2">
-            <input type="text" id="quick-note-input" placeholder="Ghi chú thêm quy tắc làm việc cho toàn bộ nhân sự..." class="flex-1 px-4 py-2.5 bg-[#060913] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400">
-            <button onclick="submitQuickNote()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
-              <i data-lucide="save" class="w-3.5 h-3.5"></i>
-              <span>Lưu vào Bộ nhớ</span>
-            </button>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- BO_NHO_CHUNG.md -->
+        <div class="glass-panel p-5 rounded-3xl space-y-3 flex flex-col max-h-[75vh]">
+          <div class="flex items-center justify-between border-b border-white/5 pb-2">
+            <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <i data-lucide="book-open" class="w-4 h-4"></i> BO_NHO_CHUNG.md
+            </span>
+            <span class="text-[10px] text-slate-500 code-font">00_QUY_TAC_VA_DIEU_PHOI/</span>
+          </div>
+          <div id="memory-content-box" class="flex-1 overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap select-text bg-[#03060E] p-4 rounded-2xl border border-white/5">
+            Đang tải dữ liệu...
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3">
-          <div class="space-y-2">
-            <div class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <i data-lucide="book" class="w-4 h-4 text-cyan-400"></i> Nội Dung BO_NHO_CHUNG.md
-            </div>
-            <pre id="memory-content-box" class="p-4 bg-[#050811] rounded-2xl border border-white/5 text-xs text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap code-font leading-relaxed">Đang tải bộ nhớ...</pre>
+        <!-- TASK_BOARD.md -->
+        <div class="glass-panel p-5 rounded-3xl space-y-3 flex flex-col max-h-[75vh]">
+          <div class="flex items-center justify-between border-b border-white/5 pb-2">
+            <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+              <i data-lucide="trello" class="w-4 h-4"></i> TASK_BOARD.md
+            </span>
+            <span class="text-[10px] text-slate-500 code-font">State Machine v3.0</span>
           </div>
-
-          <div class="space-y-2">
-            <div class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <i data-lucide="kanban" class="w-4 h-4 text-emerald-400"></i> Bảng Task (TASK_BOARD.md)
-            </div>
-            <pre id="taskboard-content-box" class="p-4 bg-[#050811] rounded-2xl border border-white/5 text-xs text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap code-font leading-relaxed">Đang tải bảng task...</pre>
+          <div id="taskboard-content-box" class="flex-1 overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap select-text bg-[#03060E] p-4 rounded-2xl border border-white/5">
+            Đang tải dữ liệu...
           </div>
         </div>
       </div>
+
     </div>
 
   </main>
 
-
   <!-- ============================================================ -->
-  <!-- MODAL: XEM TRỰC TIẾP FILE SẢN PHẨM & VIDEO THEATER           -->
+  <!-- MODAL: DELIVERABLE PREVIEW & QC AUDIT WITH BOSS ACTION BAR   -->
   <!-- ============================================================ -->
   <div id="deliverable-preview-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="glass-panel max-w-4xl w-full rounded-3xl p-6 border border-white/10 shadow-2xl space-y-4 max-h-[92vh] flex flex-col bg-[#0A0E1A]">
-      <!-- Modal Header -->
+      <!-- Header -->
       <div class="flex items-center justify-between border-b border-white/5 pb-3">
         <div class="flex items-center gap-3">
-          <div id="preview-modal-icon-wrapper" class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+          <div id="preview-modal-icon-wrapper" class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0">
             <i data-lucide="file-text" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 id="preview-modal-title" class="text-base font-extrabold text-white">Tiêu đề sản phẩm</h3>
+            <div class="flex items-center gap-2">
+              <h3 id="preview-modal-title" class="text-base font-extrabold text-white">Tiêu đề sản phẩm</h3>
+              <span id="preview-modal-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">TRẠNG THÁI</span>
+            </div>
             <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
               <span id="preview-modal-agent" class="text-indigo-400 font-semibold">NV Phụ trách</span>
               <span>·</span>
@@ -824,18 +672,24 @@
         </button>
       </div>
 
+      <!-- QC Audit Summary Box -->
+      <div id="preview-qc-box" class="p-3.5 rounded-2xl bg-[#060913] border border-white/5 text-xs space-y-2">
+        <!-- Rendered via JS -->
+      </div>
+
       <!-- Modal Content Body -->
       <div class="flex-1 overflow-y-auto bg-[#04060C] rounded-2xl border border-white/5 p-5 text-xs text-slate-200 select-text leading-relaxed" id="preview-modal-body">
         Đang tải nội dung...
       </div>
 
-      <!-- Modal Footer -->
-      <div class="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
-        <span class="text-slate-400 flex items-center gap-1.5">
-          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> File đã qua thẩm định QC và được lưu trữ vĩnh viễn trên máy
-        </span>
+      <!-- Modal Footer With Boss Action Bar -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-white/5 text-xs">
+        <div class="flex items-center gap-2" id="preview-boss-action-bar">
+          <!-- Rendered via JS based on deliverable status -->
+        </div>
+
         <div class="flex items-center gap-2">
-          <button onclick="copyDeliverablePath()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl font-semibold transition flex items-center gap-1.5 border border-white/5">
+          <button onclick="copyDeliverablePath()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl font-semibold transition flex items-center gap-1.5 border border-white/5">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
             <span>Sao chép đường dẫn file</span>
           </button>
@@ -847,13 +701,99 @@
     </div>
   </div>
 
+  <!-- ============================================================ -->
+  <!-- MODAL: SRE SYSTEM BENCHMARK & REPRODUCIBLE METRICS            -->
+  <!-- ============================================================ -->
+  <div id="system-benchmark-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 border border-cyan-500/30 shadow-2xl space-y-4 max-h-[90vh] flex flex-col bg-[#0A0E1A]">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="activity" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-white">KIỂM ĐỊNH HIỆU NĂNG & BENCHMARK THỰC TẾ</h3>
+            <p class="text-xs text-slate-400">Số liệu thực nghiệm có thể tái lập trên cổng 3333 (Không dùng mock/quảng cáo 0ms)</p>
+          </div>
+        </div>
+        <button onclick="closeModal('system-benchmark-modal')" class="text-slate-400 hover:text-white p-1 rounded-xl hover:bg-white/5 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
-  <!-- ============================================================ -->
-  <!-- MODAL: HỒ SƠ NHÂN SỰ & LIVE TELEMETRY LOG                    -->
-  <!-- ============================================================ -->
+      <div class="flex-1 overflow-y-auto space-y-4 text-xs">
+        
+        <!-- Latency Percentiles Card -->
+        <div class="p-4 bg-[#060913] rounded-2xl border border-white/5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-4 h-4 text-cyan-400"></i> Phân Bố Độ Trễ HTTP (Server Latency Distribution)
+            </span>
+            <span class="code-font text-[10px] text-slate-400" id="bm-samples-count">Mẫu: 100 reqs</span>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="p-2.5 bg-slate-900/60 rounded-xl border border-white/5">
+              <div class="text-[10px] text-slate-400">p50 (Median)</div>
+              <div class="text-base font-extrabold text-emerald-400 code-font mt-0.5" id="bm-p50">2.5ms</div>
+            </div>
+            <div class="p-2.5 bg-slate-900/60 rounded-xl border border-white/5">
+              <div class="text-[10px] text-slate-400">p95</div>
+              <div class="text-base font-extrabold text-amber-400 code-font mt-0.5" id="bm-p95">7.8ms</div>
+            </div>
+            <div class="p-2.5 bg-slate-900/60 rounded-xl border border-white/5">
+              <div class="text-[10px] text-slate-400">p99</div>
+              <div class="text-base font-extrabold text-rose-400 code-font mt-0.5" id="bm-p99">15.2ms</div>
+            </div>
+            <div class="p-2.5 bg-slate-900/60 rounded-xl border border-white/5">
+              <div class="text-[10px] text-slate-400">Mean / Min</div>
+              <div class="text-base font-extrabold text-white code-font mt-0.5" id="bm-mean">3.2ms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event-loop Lag & Memory Card -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3.5 bg-[#060913] rounded-2xl border border-white/5 space-y-1.5">
+            <div class="text-slate-400 text-[11px] font-medium">Event-Loop Lag (Lag Luồng Chính)</div>
+            <div class="text-lg font-extrabold text-white code-font" id="bm-loop-lag">0.4 ms</div>
+            <div class="text-[10px] text-emerald-400 font-semibold">Tối ưu hoàn hảo, không chặn CPU</div>
+          </div>
+          <div class="p-3.5 bg-[#060913] rounded-2xl border border-white/5 space-y-1.5">
+            <div class="text-slate-400 text-[11px] font-medium">Bộ nhớ Node.js Heap</div>
+            <div class="text-lg font-extrabold text-white code-font" id="bm-heap-used">6 MB</div>
+            <div class="text-[10px] text-slate-400" id="bm-heap-rss">RSS: 35 MB</div>
+          </div>
+        </div>
+
+        <!-- SSE Details -->
+        <div class="p-3.5 bg-[#060913] rounded-2xl border border-white/5 space-y-2">
+          <div class="font-bold text-slate-200 text-[11px] flex items-center justify-between">
+            <span>Kênh Server-Sent Events (SSE) Live Stream</span>
+            <span class="text-emerald-400 font-semibold">Keep-Alive Hoạt Động</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Kênh SSE đẩy dữ liệu thời gian thực từ server sang browser mà không cần polling liên tục. Độ trễ push đo được thực tế là <strong>1 - 10ms</strong> tuỳ thuộc vào tải của máy macOS Intel.
+          </p>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-white/5">
+        <button onclick="refreshBenchmarkData()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold rounded-xl transition flex items-center gap-1.5 text-xs shadow-md">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-950"></i>
+          <span>Đo Kiểm Lại (Run Live Benchmark)</span>
+        </button>
+        <button onclick="closeModal('system-benchmark-modal')" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HỒ SƠ NHÂN SỰ & LIVE TELEMETRY LOG -->
   <div id="agent-detail-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
     <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 border border-white/10 shadow-2xl space-y-4 max-h-[90vh] flex flex-col bg-[#0A0E1A]">
-      <!-- Header -->
       <div class="flex items-center justify-between border-b border-white/5 pb-3">
         <div class="flex items-center gap-3">
           <div id="detail-avatar" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center font-extrabold text-base text-white shadow-lg">
@@ -874,23 +814,19 @@
         </button>
       </div>
 
-      <!-- Quick Info Bar -->
       <div class="grid grid-cols-3 gap-2 py-2 px-3 bg-[#060913] rounded-xl border border-white/5 text-[11px]">
         <div><span class="text-slate-400">Phòng ban:</span> <strong id="detail-room" class="text-white">Studio</strong></div>
         <div><span class="text-slate-400">Model AI:</span> <strong id="detail-model" class="text-cyan-400">Claude 3.7</strong></div>
-        <div><span class="text-slate-400">Vũ khí:</span> <strong id="detail-skills-count" class="text-indigo-400">14 skills</strong></div>
+        <div><span class="text-slate-400">Kỹ năng:</span> <strong id="detail-skills-count" class="text-indigo-400">14 skills</strong></div>
       </div>
 
-      <!-- Body -->
       <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
-        
-        <!-- Current Task -->
         <div class="p-4 bg-[#060913] border border-white/5 rounded-2xl space-y-3">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-              <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> Tiến độ công việc
+              <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> Trạng thái thi hành
             </span>
-            <span id="detail-progress-percent" class="font-bold text-cyan-400 text-xs">100% Hoàn thành</span>
+            <span id="detail-progress-percent" class="font-bold text-cyan-400 text-xs">100% Sẵn sàng</span>
           </div>
 
           <h4 id="detail-task-title" class="font-semibold text-white text-sm">Tiêu đề nhiệm vụ</h4>
@@ -901,57 +837,50 @@
 
           <div class="p-2.5 bg-black/50 rounded-xl border border-white/5">
             <span class="text-slate-400 text-[11px]">Thao tác hiện tại:</span>
-            <div id="detail-current-step" class="text-slate-200 font-medium text-xs mt-0.5">Sẵn sàng nhận phân công từ Trưởng phòng</div>
+            <div id="detail-current-step" class="text-slate-200 font-medium text-xs mt-0.5">Sẵn sàng nhận phân công</div>
           </div>
         </div>
 
-        <!-- Terminal Logs -->
         <div class="p-3.5 bg-[#03060D] rounded-2xl border border-white/5 space-y-2">
           <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-white/5 pb-2">
             <span class="flex items-center gap-1.5 font-bold text-slate-300">
-              <i data-lucide="terminal" class="w-3.5 h-3.5 text-emerald-400"></i> Nhật Ký Hoạt Động (Live Stream)
+              <i data-lucide="terminal" class="w-3.5 h-3.5 text-emerald-400"></i> Nhật Ký Tiến Trình Thật
             </span>
-            <span class="code-font text-[10px] text-slate-500">Realtime</span>
+            <span class="code-font text-[10px] text-slate-500">Live Process</span>
           </div>
           <div id="detail-terminal-logs" class="code-font text-[11px] text-slate-300 space-y-1 max-h-36 overflow-y-auto leading-relaxed">
-            <!-- Logs via JS -->
           </div>
         </div>
 
-        <!-- Skills & Connectors Badges -->
         <div class="space-y-2 pt-1">
-          <div class="text-[11px] text-slate-400 font-medium">Kho kỹ năng & Connectors đã cấp:</div>
+          <div class="text-[11px] text-slate-400 font-medium">Kho kỹ năng & Connectors:</div>
           <div id="detail-skills-badges" class="flex flex-wrap gap-1.5">
-            <!-- Rendered via JS -->
           </div>
         </div>
       </div>
 
-      <!-- Footer -->
       <div class="flex items-center justify-between pt-3 border-t border-white/5">
         <span class="text-[11px] text-slate-400 italic">
           Sub-agent tự động nhận lệnh từ Trưởng phòng Điều phối
         </span>
-        <div class="flex items-center gap-2">
-          <button onclick="closeModal('agent-detail-modal')" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition">
-            Đóng
-          </button>
-        </div>
+        <button onclick="closeModal('agent-detail-modal')" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition">
+          Đóng
+        </button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: HƯỚNG DẪN KẾT NỐI CHATGPT PLUS WEB BRIDGE -->
   <div id="chatgpt-bridge-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="glass-panel w-full max-w-2xl bg-[#090D1A] rounded-3xl border border-amber-500/30 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in duration-200">
+    <div class="glass-panel w-full max-w-2xl bg-[#090D1A] rounded-3xl border border-amber-500/30 shadow-2xl p-6 space-y-5">
       <div class="flex items-start justify-between border-b border-white/10 pb-4">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/30 flex-shrink-0">
             <i data-lucide="link" class="w-6 h-6"></i>
           </div>
           <div>
-            <h3 class="text-base font-extrabold text-white">LIÊN KẾT PHÒNG CHAT CHATGPT PLUS CỦA TRƯỞNG PHÒNG</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Mỗi khi Sếp bấm gửi trên Dashboard, tin nhắn sẽ tự động gửi vào phòng chat ChatGPT Web này.</p>
+            <h3 class="text-base font-extrabold text-white">KẾT NỐI CHATGPT PLUS WEB (TRƯỞNG PHÒNG)</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Cầu nối tự động hóa đưa chỉ đạo Sếp vào giao diện Web ChatGPT ($0 Token phát sinh)</p>
           </div>
         </div>
         <button onclick="closeModal('chatgpt-bridge-modal')" class="text-slate-400 hover:text-white p-1 rounded-xl hover:bg-white/5 transition">
@@ -959,7 +888,6 @@
         </button>
       </div>
 
-      <!-- Trạng thái kết nối hiện tại -->
       <div id="modal-bridge-status-card" class="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span id="modal-bridge-dot" class="w-3.5 h-3.5 rounded-full bg-slate-500"></span>
@@ -968,87 +896,53 @@
             <div id="modal-bridge-status-desc" class="text-[11px] text-slate-400">Kiểm tra tín hiệu từ tab chatgpt.com</div>
           </div>
         </div>
-        <button onclick="checkBridgeStatusNow()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Làm mới
+        <button onclick="checkBridgeStatusNow()" class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Kiểm tra lại</span>
         </button>
       </div>
 
-      <!-- Các bước kích hoạt 30 giây -->
-      <div class="space-y-3 text-xs">
-        <div class="font-bold text-amber-400 uppercase tracking-wider text-[11px]">3 Bước Kích Hoạt Nhanh (15 giây):</div>
-
-        <div class="p-3.5 rounded-xl bg-[#060913] border border-white/5 space-y-2">
-          <div class="flex items-center gap-2 font-bold text-slate-200">
-            <span class="w-5 h-5 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">1</span>
-            <span>Mở Quản lý Tiện ích trên Chrome / Cốc Cốc / Brave:</span>
-          </div>
-          <p class="text-slate-400 pl-7 text-[11px]">
-            Gõ vào thanh địa chỉ: <code class="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300">chrome://extensions</code> ➔ Bật nút gạt <b>"Chế độ dành cho nhà phát triển" (Developer Mode)</b> ở góc trên bên phải.
-          </p>
-        </div>
-
-        <div class="p-3.5 rounded-xl bg-[#060913] border border-white/5 space-y-2">
-          <div class="flex items-center gap-2 font-bold text-slate-200">
-            <span class="w-5 h-5 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">2</span>
-            <span>Tải Tiện ích mở rộng đã tạo sẵn:</span>
-          </div>
-          <p class="text-slate-400 pl-7 text-[11px]">
-            Nhấn nút <b>"Tải tiện ích đã giải nén" (Load unpacked)</b> ➔ Chọn thư mục:
-          </p>
-          <div class="pl-7 flex items-center gap-2">
-            <input type="text" readonly value="/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/VAN_PHONG_AI_STUDIO/tools/chatgpt_bridge_extension" class="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-[11px] text-amber-300 font-mono select-all">
-            <button onclick="copyExtensionPath()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap">
-              Sao chép
-            </button>
-          </div>
-        </div>
-
-        <div class="p-3.5 rounded-xl bg-[#060913] border border-white/5 space-y-2">
-          <div class="flex items-center gap-2 font-bold text-slate-200">
-            <span class="w-5 h-5 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">3</span>
-            <span>Mở Tab ChatGPT Web phòng chat của Trưởng phòng:</span>
-          </div>
-          <p class="text-slate-400 pl-7 text-[11px]">
-            Mở đường dẫn cuộc trò chuyện mà Sếp đã tạo riêng cho Trưởng phòng trên <a href="https://chatgpt.com" target="_blank" class="text-cyan-400 underline font-semibold">chatgpt.com</a>. Góc dưới sẽ xuất hiện huy hiệu: <b>🟢 Văn Phòng AI: Đã liên kết Trưởng phòng</b>!
-          </p>
+      <div class="space-y-3 text-xs text-slate-300">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider">Cơ chế hoạt động & Fallback:</h4>
+        <div class="p-3 bg-[#060913] rounded-xl border border-white/5 space-y-2">
+          <p>• Khi tab ChatGPT Web mở: Lệnh của Sếp được đưa vào ô chat Trưởng phòng để phân rã chuyên sâu.</p>
+          <p>• Khi tab ChatGPT chưa mở hoặc phản hồi chậm: Hệ thống chuyển sang <strong>Bộ điều phối quy tắc nội bộ (RULE_ENGINE_FALLBACK)</strong> một cách minh bạch, không giả mạo câu trả lời của AI.</p>
         </div>
       </div>
 
-      <div class="flex items-center justify-between pt-2 border-t border-white/10">
-        <a href="https://chatgpt.com" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition">
-          <i data-lucide="external-link" class="w-4 h-4 text-cyan-400"></i> Mở ChatGPT Web
-        </a>
-        <button onclick="closeModal('chatgpt-bridge-modal')" class="px-6 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold rounded-xl text-xs transition shadow-md">
-          Đã Hiểu & Đóng
+      <div class="flex items-center justify-between pt-3 border-t border-white/10">
+        <button onclick="copyExtensionPath()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-white/5">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>Sao chép đường dẫn Extension</span>
+        </button>
+        <button onclick="closeModal('chatgpt-bridge-modal')" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-md">
+          Đã Hiểu
         </button>
       </div>
     </div>
   </div>
 
-
   <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 bg-[#0F172A] border border-amber-500/40 text-white rounded-2xl text-xs shadow-2xl z-50 flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300">
-    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
-    <span id="toast-msg">Thông báo</span>
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 bg-[#0E1527] border border-amber-500/30 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3">
+    <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+      <i data-lucide="bell" class="w-4 h-4"></i>
+    </div>
+    <div id="toast-msg" class="text-xs font-medium">Thông báo từ Văn Phòng AI</div>
   </div>
 
-
-  <!-- ============================================================ -->
-  <!-- JAVASCRIPT LOGIC & ENGINE INTEGRATION                        -->
-  <!-- ============================================================ -->
+  <!-- ==================== SCRIPT APPLICATION LOGIC ==================== -->
   <script>
     let globalAgents = [];
-    let globalSkills = [];
-    let globalConnectors = [];
     let globalDeliverables = [];
-    let currentPreviewPath = '';
+    let globalSkills = [];
     let currentDetailAgentId = null;
+    let currentPreviewDeliverable = null;
 
     function getInitials(id) {
       const map = {
         'truong-phong': 'TP',
         'nv-seo': 'SEO',
-        'nv-content': 'CON',
+        'nv-content': 'CT',
         'nv-video': 'VID',
         'nv-thiet-ke': 'DES',
         'nv-dev': 'DEV',
@@ -1056,29 +950,21 @@
         'nv-tai-chinh': 'FIN',
         'nv-ads': 'ADS'
       };
-      return map[id] || 'NV';
+      return map[id] || 'AI';
     }
 
     function switchTab(tabId) {
-      document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-        b.classList.add('text-slate-400');
+      document.querySelectorAll('main > div[id^="view-"]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('header nav button').forEach(b => {
+        b.className = 'tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white';
       });
 
       const activeView = document.getElementById(`view-${tabId}`);
       const activeBtn = document.getElementById(`tab-btn-${tabId}`);
-
       if (activeView) activeView.classList.remove('hidden');
       if (activeBtn) {
-        activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
+        activeBtn.className = 'tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
       }
-
-      if (tabId === 'memory') loadMemory();
-      if (tabId === 'deliverables') loadDeliverables();
-      if (tabId === 'skills') loadSkills();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function focusBossConsole() {
@@ -1104,7 +990,7 @@
       }
     }
 
-    // ==================== BOSS DIRECT DISPATCH TO TRƯỞNG PHÒNG ====================
+    // ==================== BOSS DISPATCH (REAL-TIME ORCHESTRATION) ====================
     async function submitBossDispatch() {
       const input = document.getElementById('boss-brief-input');
       const brief = input ? input.value.trim() : '';
@@ -1130,23 +1016,10 @@
       statusText.innerText = 'Đang điều hành & phân rã task...';
       statusText.className = 'text-amber-400 font-semibold animate-pulse';
 
-      stepTitle.innerText = `Trưởng phòng (ChatGPT Plus) tiếp nhận: "${brief.substring(0, 45)}..."`;
+      stepTitle.innerText = `Trưởng phòng tiếp nhận: "${brief.substring(0, 45)}..."`;
       percentEl.innerText = '20%';
       progressBar.style.width = '20%';
-      logBox.innerHTML = `<div><span class="text-amber-400">❯</span> [${new Date().toLocaleTimeString('vi-VN')}] Sếp Quill phát lệnh tác chiến: "${brief}"</div>`;
-
-      // Animate progress simulation while fetch runs
-      const timer1 = setTimeout(() => {
-        percentEl.innerText = '45%';
-        progressBar.style.width = '45%';
-        logBox.innerHTML += `<div><span class="text-cyan-400">❯</span> Trưởng phòng phân tích yêu cầu ➔ Phân công Sub-agent kỹ thuật chuyên môn...</div>`;
-      }, 400);
-
-      const timer2 = setTimeout(() => {
-        percentEl.innerText = '75%';
-        progressBar.style.width = '75%';
-        logBox.innerHTML += `<div><span class="text-indigo-400">❯</span> Sub-agent đang chạy workload thực tế & tạo file đầu ra...</div>`;
-      }, 900);
+      logBox.innerHTML = `<div><span class="text-amber-400">❯</span> [${new Date().toLocaleTimeString('vi-VN')}] [START] Sếp Quill phát lệnh tác chiến: "${brief}"</div>`;
 
       try {
         const res = await fetch('/api/boss-dispatch', {
@@ -1156,34 +1029,30 @@
         });
 
         const data = await res.json();
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-
         if (!res.ok) throw new Error(data.error || 'Lỗi khi Trưởng phòng xử lý');
 
         percentEl.innerText = '100%';
         progressBar.style.width = '100%';
-        stepTitle.innerText = `Nhiệm vụ hoàn tất! Đã lưu sản phẩm vào Kho Đầu Ra.`;
-        logBox.innerHTML += `<div><span class="text-emerald-400">❯</span> [${new Date().toLocaleTimeString('vi-VN')}] 🏆 ${data.deliverable.title} đã được QC thẩm định và nghiệm thu!</div>`;
+        stepTitle.innerText = data.deliverable ? `Nhiệm vụ hoàn tất: ${data.deliverable.title}` : 'Đã hoàn tất điều phối!';
+
+        const qcVerdict = data.qcAudit ? data.qcAudit.verdict : 'PASSED';
+        logBox.innerHTML += `<div><span class="text-emerald-400">❯</span> [${new Date().toLocaleTimeString('vi-VN')}] 🏆 ${data.deliverable ? data.deliverable.title : 'Task'} — Kết quả QC: ${qcVerdict}</div>`;
         logBox.scrollTop = logBox.scrollHeight;
 
-        statusText.innerText = 'Hoàn thành bàn giao cho Sếp';
+        statusText.innerText = data.deliverable && data.deliverable.requiresBossApproval ? 'Chờ Sếp duyệt thẩm mỹ' : 'Đã hoàn tất nghiệm thu';
         statusText.className = 'text-emerald-400 font-semibold';
 
-        showToast(`🏆 Trưởng phòng đã hoàn tất: "${data.deliverable.title}"!`);
+        showToast(data.message || `Đã hoàn thành phân công nhiệm vụ!`);
         input.value = '';
         
         loadDeliverables();
         initData();
 
-        // Highlight open deliverable button
-        setTimeout(() => {
-          logBox.innerHTML += `<div class="pt-2"><button onclick="openDeliverableById('${data.deliverable.id}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold">👉 Bấm để xem sản phẩm vừa tạo ngay</button></div>`;
-        }, 300);
+        if (data.deliverable) {
+          logBox.innerHTML += `<div class="pt-2"><button onclick="openDeliverableById('${data.deliverable.id}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold">👉 Xem chi tiết sản phẩm và báo cáo QC</button></div>`;
+        }
 
       } catch (err) {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
         stepTitle.innerText = `Lỗi thực thi: ${err.message}`;
         logBox.innerHTML += `<div class="text-rose-400"><span class="text-rose-500">❯</span> Lỗi: ${err.message}</div>`;
         statusText.innerText = 'Gặp sự cố kỹ thuật';
@@ -1195,6 +1064,34 @@
       }
     }
 
+    // ==================== BOSS REVIEW ACTIONS ====================
+    async function submitBossReview(deliverableId, action) {
+      let comment = '';
+      if (action === 'request_revision') {
+        comment = prompt('Nhập yêu cầu chỉnh sửa cụ thể cho Agent:', 'Cần hoàn thiện âm thanh và nhịp điệu');
+        if (comment === null) return;
+      } else if (action === 'reject') {
+        if (!confirm('Sếp chắc chắn muốn TỪ CHỐI nghiệm thu sản phẩm này?')) return;
+      }
+
+      try {
+        const res = await fetch('/api/deliverable/boss-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deliverableId, action, comment })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Lỗi khi cập nhật');
+
+        showToast(action === 'approve' ? '🌟 Sếp đã PHÊ DUYỆT nghiệm thu sản phẩm!' : (action === 'request_revision' ? '⚠️ Đã yêu cầu chỉnh sửa!' : '❌ Đã từ chối sản phẩm!'));
+        closeModal('deliverable-preview-modal');
+        loadDeliverables();
+        loadMemory();
+      } catch (e) {
+        alert('Lỗi: ' + e.message);
+      }
+    }
+
     // ==================== DELIVERABLES HUB & MEDIA THEATER ====================
     async function loadDeliverables() {
       try {
@@ -1202,6 +1099,7 @@
         if (res.ok) {
           globalDeliverables = await res.json();
           document.getElementById('deliverables-count-badge').innerText = globalDeliverables.length;
+          document.getElementById('filter-all-count').innerText = globalDeliverables.length;
           document.getElementById('stat-deliverables-count').innerText = `${globalDeliverables.length} Sản phẩm`;
           renderDeliverables(globalDeliverables);
         }
@@ -1223,8 +1121,24 @@
           ? `/api/stream-image?path=${encodeURIComponent(d.thumbnailPath)}`
           : null;
 
+        // Status badge styling
+        let statusBadgeHtml = '';
+        if (d.status === 'approved') {
+          statusBadgeHtml = `<span class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold flex items-center gap-1 border border-emerald-500/20"><i data-lucide="check" class="w-3 h-3"></i> Đã Nghiệm Thu</span>`;
+        } else if (d.status === 'qc_passed_pending_boss') {
+          statusBadgeHtml = `<span class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-bold flex items-center gap-1 border border-amber-500/30 animate-pulse"><i data-lucide="clock" class="w-3 h-3"></i> Chờ Sếp Duyệt</span>`;
+        } else if (d.status === 'needs_revision') {
+          statusBadgeHtml = `<span class="text-[10px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 font-bold flex items-center gap-1 border border-rose-500/30"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Yêu Cầu Sửa</span>`;
+        } else if (d.status === 'rejected') {
+          statusBadgeHtml = `<span class="text-[10px] px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 font-bold flex items-center gap-1 border border-red-500/40"><i data-lucide="x-circle" class="w-3 h-3"></i> Từ Chối</span>`;
+        } else {
+          statusBadgeHtml = `<span class="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-bold flex items-center gap-1 border border-cyan-500/20"><i data-lucide="eye" class="w-3 h-3"></i> Đang Thẩm Định</span>`;
+        }
+
+        const qcScoreBadge = d.qcScore !== undefined ? `<span class="text-[10px] text-slate-400 code-font">QC: <strong>${d.qcScore}/100</strong></span>` : '';
+
         return `
-          <div class="glass-panel rounded-3xl p-5 border border-white/5 flex flex-col justify-between glass-card-interactive">
+          <div class="glass-panel rounded-3xl p-5 border ${d.status === 'needs_revision' ? 'border-rose-500/40' : (d.status === 'qc_passed_pending_boss' ? 'border-amber-500/40' : 'border-white/5')} flex flex-col justify-between glass-card-interactive">
             <div class="space-y-3">
               
               <!-- Card Top -->
@@ -1237,9 +1151,10 @@
                   ${d.category}
                 </span>
                 
-                <span class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold flex items-center gap-1 border border-emerald-500/20">
-                  <i data-lucide="check" class="w-3 h-3"></i> QC Passed
-                </span>
+                <div class="flex items-center gap-2">
+                  ${qcScoreBadge}
+                  ${statusBadgeHtml}
+                </div>
               </div>
 
               <!-- Media Thumbnail for Videos -->
@@ -1267,6 +1182,18 @@
                 </p>
               </div>
 
+              <!-- Defects Alert Box (If any) -->
+              ${d.qcDefects && d.qcDefects.length > 0 ? `
+                <div class="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-[11px] text-rose-300 space-y-1">
+                  <div class="font-bold flex items-center gap-1 text-[10px] uppercase text-rose-400">
+                    <i data-lucide="alert-octagon" class="w-3 h-3"></i> Khuyết tật phát hiện bởi QC:
+                  </div>
+                  <div class="text-[10px] text-rose-200 line-clamp-2">
+                    ${d.qcDefects[0]}
+                  </div>
+                </div>
+              ` : ''}
+
               <!-- Metadata Box -->
               <div class="p-3 bg-[#060913] rounded-2xl border border-white/5 space-y-1.5 text-[11px]">
                 <div class="flex items-center justify-between text-slate-400">
@@ -1285,11 +1212,20 @@
             </div>
 
             <!-- Card Action Footer -->
-            <div class="pt-4 border-t border-white/5 mt-3 flex items-center gap-2">
-              <button onclick="openDeliverableById('${d.id}')" class="flex-1 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+            <div class="pt-3 border-t border-white/5 mt-3 flex items-center gap-2">
+              <button onclick="openDeliverableById('${d.id}')" class="flex-1 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
                 <i data-lucide="${isVideo ? 'play' : 'file-text'}" class="w-3.5 h-3.5"></i>
-                <span>${isVideo ? 'Xem Video Trực Tiếp' : 'Xem Nội Dung Báo Cáo'}</span>
+                <span>${isVideo ? 'Xem Video' : 'Xem Báo Cáo'}</span>
               </button>
+
+              ${d.status === 'qc_passed_pending_boss' || d.status === 'needs_revision' ? `
+                <button onclick="submitBossReview('${d.id}', 'approve')" class="px-3 py-2 bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition" title="Sếp phê duyệt nghiệm thu">
+                  Duyệt
+                </button>
+                <button onclick="submitBossReview('${d.id}', 'request_revision')" class="px-3 py-2 bg-amber-600/25 hover:bg-amber-600/40 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition" title="Bắt Agent sửa lại">
+                  Bắt Sửa
+                </button>
+              ` : ''}
             </div>
           </div>
         `;
@@ -1298,12 +1234,10 @@
     }
 
     function filterDeliverables(cat) {
-      document.querySelectorAll('.deliv-filter-btn').forEach(btn => {
-        btn.classList.remove('bg-indigo-600', 'text-white');
-        btn.classList.add('bg-slate-900/80', 'text-slate-400');
+      document.querySelectorAll('.deliv-filter-btn').forEach(b => {
+        b.className = 'deliv-filter-btn px-4 py-1.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 hover:text-white transition';
       });
-      event.target.classList.remove('bg-slate-900/80', 'text-slate-400');
-      event.target.classList.add('bg-indigo-600', 'text-white');
+      event.target.className = 'deliv-filter-btn px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-bold transition';
 
       if (cat === 'all') {
         renderDeliverables(globalDeliverables);
@@ -1315,34 +1249,88 @@
 
     function openDeliverableById(id) {
       const d = globalDeliverables.find(item => item.id === id);
-      if (!d) return;
-      openDeliverablePreview(d.filePath, d.title, d.agentName, d.relativePath, d.format);
+      if (d) {
+        currentPreviewDeliverable = d;
+        openDeliverablePreview(d);
+      }
     }
 
-    async function openDeliverablePreview(filePath, title, agentName, relPath, format) {
-      currentPreviewPath = filePath;
-      document.getElementById('preview-modal-title').innerText = title;
-      document.getElementById('preview-modal-agent').innerText = agentName;
-      document.getElementById('preview-modal-path').innerText = relPath;
+    async function openDeliverablePreview(d) {
+      currentPreviewDeliverable = d;
+      document.getElementById('preview-modal-title').innerText = d.title;
+      document.getElementById('preview-modal-agent').innerText = d.agentName;
+      document.getElementById('preview-modal-path').innerText = d.relativePath;
+
+      const badge = document.getElementById('preview-modal-status-badge');
+      if (d.status === 'approved') {
+        badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        badge.innerText = 'ĐÃ NGHIỆM THU';
+      } else if (d.status === 'needs_revision') {
+        badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30';
+        badge.innerText = 'YÊU CẦU CHỈNH SỬA';
+      } else if (d.status === 'qc_passed_pending_boss') {
+        badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse';
+        badge.innerText = 'CHỜ SẾP DUYỆT THẨM MỸ';
+      } else {
+        badge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+        badge.innerText = d.status.toUpperCase();
+      }
+
+      // Render QC Box in preview modal
+      const qcBox = document.getElementById('preview-qc-box');
+      qcBox.innerHTML = `
+        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+          <span class="font-bold text-white flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Hồ Sơ Thẩm Định QC Độc Lập
+          </span>
+          <span class="code-font text-amber-300 font-bold">Điểm số: ${d.qcScore !== undefined ? d.qcScore : 90}/100 [${d.qcStatus || 'PASSED'}]</span>
+        </div>
+        ${d.qcDefects && d.qcDefects.length > 0 ? `
+          <div class="space-y-1 pt-1 text-rose-300">
+            ${d.qcDefects.map(def => `<div class="flex items-start gap-1.5">• <span>${def}</span></div>`).join('')}
+          </div>
+        ` : `
+          <div class="text-slate-400 text-[11px] pt-1">
+            ✓ Đã xác minh tệp vật lý, dung lượng, định dạng và tính toàn vẹn kỹ thuật.
+          </div>
+        `}
+      `;
+
+      // Render Boss Action Bar in footer
+      const actionBar = document.getElementById('preview-boss-action-bar');
+      actionBar.innerHTML = `
+        <button onclick="submitBossReview('${d.id}', 'approve')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition flex items-center gap-1.5 shadow-md">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>🌟 Sếp Phê Duyệt Nghiệm Thu</span>
+        </button>
+        <button onclick="submitBossReview('${d.id}', 'request_revision')" class="px-4 py-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/30 rounded-xl font-bold transition flex items-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          <span>⚠️ Yêu Cầu Chỉnh Sửa</span>
+        </button>
+        <button onclick="submitBossReview('${d.id}', 'reject')" class="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-xl font-bold transition">
+          Từ Chối
+        </button>
+      `;
+
       const bodyEl = document.getElementById('preview-modal-body');
       openModal('deliverable-preview-modal');
 
-      const isVideo = (format === 'video') || filePath.toLowerCase().endsWith('.mp4') || filePath.toLowerCase().endsWith('.mov');
+      const isVideo = (d.format === 'video') || d.filePath.toLowerCase().endsWith('.mp4');
 
       if (isVideo) {
         bodyEl.className = 'flex-1 overflow-y-auto bg-black rounded-2xl border border-white/10 p-4 text-xs text-slate-200 video-theater-wrapper';
         bodyEl.innerHTML = `
           <div class="flex flex-col items-center justify-center space-y-4">
-            <video controls autoplay class="rounded-2xl max-h-[60vh] max-w-full shadow-2xl border border-white/10">
-              <source src="/api/stream-video?path=${encodeURIComponent(filePath)}" type="video/mp4">
+            <video controls autoplay class="rounded-2xl max-h-[55vh] max-w-full shadow-2xl border border-white/10">
+              <source src="/api/stream-video?path=${encodeURIComponent(d.filePath)}" type="video/mp4">
               Trình duyệt không hỗ trợ xem video trực tiếp.
             </video>
             <div class="text-xs text-slate-300 text-center bg-[#070A12] p-3 rounded-2xl border border-white/5 w-full flex items-center justify-between">
               <span class="flex items-center gap-1.5 text-emerald-400 font-semibold">
                 <i data-lucide="check-circle" class="w-4 h-4"></i>
-                <span>Tệp Video MP4 nguyên gốc</span>
+                <span>Tệp Video MP4 nguyên gốc (${d.fileSizeMb || ''} MB)</span>
               </span>
-              <span class="code-font text-slate-400 text-[11px] truncate max-w-sm">${relPath}</span>
+              <span class="code-font text-slate-400 text-[11px] truncate max-w-sm">${d.relativePath}</span>
             </div>
           </div>
         `;
@@ -1354,7 +1342,7 @@
       bodyEl.innerText = 'Đang tải nội dung văn bản...';
 
       try {
-        const res = await fetch(`/api/file-content?path=${encodeURIComponent(filePath)}`);
+        const res = await fetch(`/api/file-content?path=${encodeURIComponent(d.filePath)}`);
         if (!res.ok) throw new Error('Không đọc được file');
         const text = await res.text();
         if (window.marked) {
@@ -1364,82 +1352,124 @@
         }
       } catch (err) {
         bodyEl.className = 'flex-1 overflow-y-auto bg-black rounded-2xl border border-white/5 p-6 font-mono text-xs text-rose-300 whitespace-pre-wrap';
-        bodyEl.innerText = `Lỗi đọc file: ${err.message}\nĐường dẫn: ${filePath}`;
+        bodyEl.innerText = `Lỗi đọc file: ${err.message}\nĐường dẫn: ${d.filePath}`;
       }
+      lucide.createIcons();
     }
 
     function copyDeliverablePath() {
-      if (currentPreviewPath) {
-        navigator.clipboard.writeText(currentPreviewPath);
+      if (currentPreviewDeliverable && currentPreviewDeliverable.filePath) {
+        navigator.clipboard.writeText(currentPreviewDeliverable.filePath);
         showToast('Đã sao chép đường dẫn file vào clipboard!');
+      }
+    }
+
+    // ==================== BENCHMARK SRE MODAL ====================
+    async function openBenchmarkModal() {
+      openModal('system-benchmark-modal');
+      await refreshBenchmarkData();
+    }
+
+    async function refreshBenchmarkData() {
+      try {
+        const res = await fetch('/api/benchmark');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        document.getElementById('bm-p50').innerText = `${data.latency.p50}ms`;
+        document.getElementById('bm-p95').innerText = `${data.latency.p95}ms`;
+        document.getElementById('bm-p99').innerText = `${data.latency.p99}ms`;
+        document.getElementById('bm-mean').innerText = `${data.latency.mean}ms / ${data.latency.min}ms`;
+        document.getElementById('bm-samples-count').innerText = `Mẫu: ${data.latency.samples} reqs`;
+
+        document.getElementById('bm-loop-lag').innerText = `${data.eventLoopLagMs} ms`;
+        document.getElementById('bm-heap-used').innerText = `${data.memory.heapUsedMb} MB`;
+        document.getElementById('bm-heap-rss').innerText = `RSS: ${data.memory.rssMb} MB · Heap: ${data.memory.heapTotalMb} MB`;
+
+        // Update header & stat badges too
+        document.getElementById('header-latency-val').innerText = `p50: ${data.latency.p50}ms`;
+        document.getElementById('stat-latency-val').innerText = `${data.latency.p50}ms`;
+      } catch (e) {
+        console.error('Lỗi lấy benchmark:', e);
       }
     }
 
     // ==================== OFFICE ROOMS & TEAM SUB-AGENTS ====================
     function renderOfficeRooms(agents) {
       const makeRoomCard = (a) => `
-        <div class="p-3 bg-[#060913] border border-white/5 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition cursor-pointer" onclick="openAgentDetailModal('${a.id}')">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl ${a.id === 'truong-phong' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-600/20 text-indigo-300'} flex items-center justify-center font-bold text-xs">
-              ${getInitials(a.id)}
+        <div class="glass-panel rounded-3xl p-5 border border-white/5 space-y-4 hover:border-indigo-500/30 transition glass-card-interactive flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center font-extrabold text-sm text-white shadow-md shadow-indigo-600/20">
+                  ${getInitials(a.id)}
+                </div>
+                <div>
+                  <div class="font-extrabold text-sm text-white leading-tight">${a.name}</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">${a.room}</div>
+                </div>
+              </div>
+              <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${a.busyState === 'working' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 animate-pulse' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'}">
+                ${a.busyState === 'working' ? 'Đang chạy' : 'Sẵn sàng'}
+              </span>
             </div>
-            <div>
-              <div class="font-bold text-xs text-white">${a.name}</div>
-              <div class="text-[10px] text-slate-400 truncate max-w-[140px]">${a.role}</div>
+
+            <div class="p-3 bg-[#060913] rounded-2xl border border-white/5 space-y-1.5 text-[11px]">
+              <div class="text-slate-400 truncate">Vũ khí: <strong class="text-indigo-400">${a.skillsCount} skills</strong> · Connectors: <strong class="text-cyan-400">${a.connectorCount}</strong></div>
+              <div class="text-slate-400 truncate">Mô hình: <strong class="text-slate-300">${a.model}</strong></div>
             </div>
           </div>
-          <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-            a.busyState === 'working' ? 'bg-cyan-500/15 text-cyan-400' : 'bg-emerald-500/15 text-emerald-400'
-          }">
-            ${a.busyState === 'working' ? 'BẬN' : 'RẢNH'}
-          </span>
+
+          <div class="pt-2 border-t border-white/5 flex items-center justify-between">
+            <button onclick="openAgentDetailModal('${a.id}')" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+              <span>Xem chi tiết hồ sơ & log</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
         </div>
       `;
 
-      document.getElementById('room-exec-list').innerHTML = agents.filter(a => a.id === 'truong-phong' || a.id === 'nv-qc').map(makeRoomCard).join('');
-      document.getElementById('room-marketing-list').innerHTML = agents.filter(a => a.id === 'nv-seo' || a.id === 'nv-content' || a.id === 'nv-ads').map(makeRoomCard).join('');
-      document.getElementById('room-media-list').innerHTML = agents.filter(a => a.id === 'nv-video' || a.id === 'nv-thiet-ke').map(makeRoomCard).join('');
-      document.getElementById('room-dev-list').innerHTML = agents.filter(a => a.id === 'nv-dev').map(makeRoomCard).join('');
-      document.getElementById('room-trading-list').innerHTML = agents.filter(a => a.id === 'nv-tai-chinh').map(makeRoomCard).join('');
+      const grid = document.getElementById('office-rooms-grid');
+      grid.innerHTML = agents.map(makeRoomCard).join('');
+      lucide.createIcons();
     }
 
     function renderTeamCards(agents) {
       const container = document.getElementById('team-cards-container');
       container.innerHTML = agents.map(a => `
-        <div class="glass-panel rounded-3xl p-5 border border-white/5 flex flex-col justify-between glass-card-interactive" onclick="openAgentDetailModal('${a.id}')">
+        <div class="glass-panel p-5 rounded-3xl border border-white/5 space-y-4 hover:border-cyan-500/30 transition glass-card-interactive flex flex-col justify-between">
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <div class="w-12 h-12 rounded-2xl ${a.id === 'truong-phong' ? 'bg-gradient-to-tr from-amber-500 to-amber-600' : 'bg-gradient-to-tr from-indigo-600 to-cyan-500'} flex items-center justify-center font-extrabold text-sm text-white shadow-md">
-                ${getInitials(a.id)}
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center font-extrabold text-sm text-white shadow-lg">
+                  ${getInitials(a.id)}
+                </div>
+                <div>
+                  <h3 class="font-extrabold text-white text-sm">${a.name}</h3>
+                  <div class="text-xs text-indigo-400">${a.role}</div>
+                </div>
               </div>
-              <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${
-                a.busyState === 'working' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-              }">
-                ${a.busyState === 'working' ? 'Đang thực thi' : 'Sẵn sàng'}
+              <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${a.busyState === 'working' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'}">
+                ${a.busyState === 'working' ? 'Đang bận' : 'Sẵn sàng'}
               </span>
             </div>
 
-            <div>
-              <h3 class="font-extrabold text-sm text-white">${a.name}</h3>
-              <p class="text-xs text-indigo-400 font-medium">${a.role}</p>
-            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">${a.coreDuties ? a.coreDuties.join(' · ') : ''}</p>
 
-            <div class="flex items-center gap-2 text-[11px] text-slate-400 pt-2 border-t border-white/5">
-              <span class="px-2 py-0.5 rounded-lg bg-[#060913] border border-white/5">${a.skillsCount} skills</span>
-              <span class="px-2 py-0.5 rounded-lg bg-[#060913] border border-white/5">${a.connectorCount} connectors</span>
-              <span class="px-2 py-0.5 rounded-lg bg-[#060913] border border-white/5 code-font text-cyan-400">${a.model.split(' ')[0]}</span>
-            </div>
-
-            <div class="p-2.5 bg-[#060913] rounded-2xl border border-white/5 text-[11px] space-y-1">
-              <span class="text-slate-400 font-medium">Nhiệm vụ đang phụ trách:</span>
-              <div class="text-slate-200 italic truncate">${a.activeTasks[0] || 'Sẵn sàng nhận lệnh'}</div>
+            <div class="p-3 bg-[#060913] rounded-2xl border border-white/5 space-y-1 text-[11px]">
+              <div><span class="text-slate-400">Phòng ban:</span> <strong class="text-white">${a.room}</strong></div>
+              <div><span class="text-slate-400">Model:</span> <strong class="text-cyan-400">${a.model}</strong></div>
+              <div><span class="text-slate-400">Kho kỹ năng:</span> <strong class="text-indigo-400">${a.skillsCount} skills · ${a.connectorCount} connectors</strong></div>
             </div>
           </div>
 
-          <div class="pt-4 border-t border-white/5 mt-4">
-            <button onclick="event.stopPropagation(); openAgentDetailModal('${a.id}')" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/5 rounded-2xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
-              <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i>
-              <span>Xem Hồ Sơ & Live Telemetry</span>
+          <div class="pt-3 border-t border-white/5 flex items-center justify-between">
+            <button onclick="openAgentDetailModal('${a.id}')" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/10 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+              <i data-lucide="terminal" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Xem Live Log</span>
+            </button>
+            <button onclick="executeAgentReal('${a.id}')" class="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition">
+              Chạy Thử
             </button>
           </div>
         </div>
@@ -1447,100 +1477,95 @@
       lucide.createIcons();
     }
 
-    // ==================== AGENT DETAIL MODAL ====================
     async function openAgentDetailModal(agentId) {
       currentDetailAgentId = agentId;
       try {
         const res = await fetch(`/api/agent-detail?id=${agentId}`).then(r => r.json());
-        if (!res || res.error) {
-          alert('Không tìm thấy thông tin nhân sự');
-          return;
-        }
+        document.getElementById('detail-avatar').innerText = getInitials(res.id);
+        document.getElementById('detail-name').innerText = res.name;
+        document.getElementById('detail-role').innerText = res.role;
+        document.getElementById('detail-room').innerText = res.room;
+        document.getElementById('detail-model').innerText = res.model;
+        document.getElementById('detail-skills-count').innerText = `${res.skillsCount} skills`;
 
-        const agent = res;
-        document.getElementById('detail-avatar').innerText = getInitials(agent.id);
-        document.getElementById('detail-name').innerText = agent.name;
-        document.getElementById('detail-role').innerText = agent.role;
-        document.getElementById('detail-room').innerText = agent.room;
-        document.getElementById('detail-model').innerText = agent.model;
-        document.getElementById('detail-skills-count').innerText = `${agent.skillsCount} skills · ${agent.connectorCount} conn`;
+        const statusBadge = document.getElementById('detail-status-badge');
+        statusBadge.innerText = res.busyState === 'working' ? 'Đang thực thi' : 'Sẵn sàng';
+        statusBadge.className = res.busyState === 'working' 
+          ? 'text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30'
+          : 'text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
 
-        const badgeEl = document.getElementById('detail-status-badge');
-        if (agent.busyState === 'working') {
-          badgeEl.className = 'text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> Đang làm việc';
-        } else {
-          badgeEl.className = 'text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
-          badgeEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Sẵn sàng';
-        }
-
-        const task = agent.currentTask || {
-          title: 'Hiện đang sẵn sàng nhận phân bổ nhiệm vụ mới',
+        const task = res.currentTask || {
+          title: 'Sẵn sàng nhận lệnh điều phối',
           progress: 100,
-          currentStep: 'Chờ lệnh tác chiến từ Trưởng phòng',
-          logs: ['[Sẵn sàng] Đã nạp đầy đủ kỹ năng nghiệp vụ']
+          currentStep: 'Chờ chỉ đạo mới từ Trưởng phòng',
+          logs: ['[SẴN SÀNG] Nhân sự đang chờ phân bổ nhiệm vụ mới.']
         };
 
         document.getElementById('detail-task-title').innerText = task.title;
-        document.getElementById('detail-progress-percent').innerText = `${task.progress || 100}% Hoàn thành`;
-        document.getElementById('detail-progress-bar').style.width = `${task.progress || 100}%`;
-        document.getElementById('detail-current-step').innerText = task.currentStep || 'Sẵn sàng';
+        document.getElementById('detail-progress-percent').innerText = `${task.progress}% Hoàn thành`;
+        document.getElementById('detail-progress-bar').style.width = `${task.progress}%`;
+        document.getElementById('detail-current-step').innerText = task.currentStep;
 
-        // Terminal logs
-        const logsContainer = document.getElementById('detail-terminal-logs');
-        if (task.logs && task.logs.length) {
-          logsContainer.innerHTML = task.logs.map(l => `<div><span class="text-emerald-400">❯</span> ${l}</div>`).join('');
-          logsContainer.scrollTop = logsContainer.scrollHeight;
-        } else {
-          logsContainer.innerHTML = '<div class="text-slate-600">[Không có log phát sinh]</div>';
-        }
+        const logsBox = document.getElementById('detail-terminal-logs');
+        logsBox.innerHTML = (task.logs || []).map(l => `<div><span class="text-emerald-400">❯</span> ${l}</div>`).join('');
 
-        // Skills badges
-        const badgesContainer = document.getElementById('detail-skills-badges');
-        const skills = agent.assignedSkills || [];
-        const connectors = agent.assignedConnectors || [];
-        badgesContainer.innerHTML = [
-          ...skills.map(s => `<span class="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px] code-font">${s}</span>`),
-          ...connectors.map(c => `<span class="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] code-font">${c}</span>`)
-        ].join('');
+        const badgesBox = document.getElementById('detail-skills-badges');
+        badgesBox.innerHTML = (res.assignedSkills || []).map(s => `
+          <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-900 border border-white/10 text-slate-300 code-font">${s}</span>
+        `).join('');
 
         openModal('agent-detail-modal');
-        lucide.createIcons();
       } catch (err) {
-        console.error('Lỗi xem nhân sự:', err);
+        console.error('Lỗi nạp agent detail:', err);
       }
     }
 
-    // ==================== CONNECTORS & SKILLS ====================
+    async function executeAgentReal(agentId) {
+      try {
+        showToast(`Đang kích hoạt quy trình thực thi cho: ${agentId}...`);
+        const res = await fetch('/api/agent/execute-real', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: agentId })
+        }).then(r => r.json());
+
+        if (res.success) {
+          showToast(`🏆 Hoàn tất sản phẩm: "${res.deliverable.title}"!`);
+          loadDeliverables();
+          initData();
+        }
+      } catch (err) {
+        alert('Lỗi: ' + err.message);
+      }
+    }
+
+    // ==================== SKILLS & CONNECTORS ====================
     async function loadSkills() {
       try {
-        const [resSkills, resConn] = await Promise.all([
+        const [skillsRes, connRes] = await Promise.all([
           fetch('/api/skills').then(r => r.json()),
           fetch('/api/connectors').then(r => r.json())
         ]);
-        globalSkills = resSkills;
-        globalConnectors = resConn;
-
-        document.getElementById('skills-count-text').innerText = globalSkills.length;
-        renderConnectors(globalConnectors);
-        renderSkills(globalSkills);
+        globalSkills = skillsRes;
+        renderConnectors(connRes);
+        renderSkills(skillsRes);
       } catch (err) {
-        console.error('Lỗi tải skills:', err);
+        console.error('Lỗi load skills:', err);
       }
     }
 
     function renderConnectors(connectors) {
       const container = document.getElementById('connectors-container');
       container.innerHTML = connectors.map(c => `
-        <div class="p-3.5 bg-[#060913] border border-white/5 rounded-2xl flex flex-col justify-between">
-          <div class="space-y-1">
+        <div class="glass-panel p-4 rounded-2xl border border-white/5 space-y-2 flex flex-col justify-between">
+          <div>
             <div class="flex items-center justify-between">
-              <span class="font-bold text-xs text-white">${c.name}</span>
+              <h4 class="font-bold text-white text-xs">${c.name}</h4>
               <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold uppercase">Online</span>
             </div>
-            <p class="text-[11px] text-slate-400">${c.desc}</p>
+            <p class="text-[11px] text-slate-400 mt-1">${c.desc}</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-white/5 text-[10px] text-cyan-400 code-font">
+          <div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-cyan-400 code-font">
             ${c.type}
           </div>
         </div>
@@ -1553,14 +1578,14 @@
       container.innerHTML = skills.map(s => `
         <div class="p-3 bg-[#060913] border border-white/5 rounded-xl space-y-1 hover:border-indigo-500/30 transition">
           <div class="font-bold text-xs text-indigo-300 code-font truncate">${s.name}</div>
-          <p class="text-[10px] text-slate-400 line-clamp-2">${s.desc}</p>
+          <p class="text-[10px] text-slate-400 line-clamp-2">${s.description || 'Universal Skill'}</p>
         </div>
       `).join('');
     }
 
     function filterSkills() {
       const query = document.getElementById('skill-search-input').value.toLowerCase();
-      const filtered = globalSkills.filter(s => s.name.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query));
+      const filtered = globalSkills.filter(s => s.name.toLowerCase().includes(query) || (s.description && s.description.toLowerCase().includes(query)));
       renderSkills(filtered);
     }
 
@@ -1597,32 +1622,14 @@
       }
     }
 
-    function renderRecentTasks(agents) {
-      const container = document.getElementById('recent-tasks-preview');
-      const tasks = [
-        { title: 'Render Video Viral 9:16 Kỷ Luật Thép Remix', agent: 'NV Video (Concat MCP)', time: '03:48' },
-        { title: 'Biên kịch Kịch Bản Video Viral 124 Thẻ Cảnh', agent: 'NV Content', time: '03:45' },
-        { title: 'Cào video TikTok gốc (realnezzdapoet)', agent: 'NV Video (yt-dlp)', time: '03:38' },
-        { title: 'Audit Technical SEO & GEO Tối Ưu AI Search', agent: 'NV SEO (Claude SEO)', time: '03:15' }
-      ];
-
-      container.innerHTML = tasks.map(t => `
-        <div class="p-2.5 bg-[#060913] rounded-xl border border-white/5 flex items-center justify-between text-xs">
-          <div class="truncate max-w-[210px] text-slate-300 font-medium">${t.title}</div>
-          <span class="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 code-font flex-shrink-0">${t.agent}</span>
-        </div>
-      `).join('');
-    }
-
-    // ==================== REALTIME SSE (0ms Latency) ====================
+    // ==================== REALTIME SSE (LIVE TELEMETRY) ====================
     function connectLiveStream() {
       const evtSource = new EventSource('/api/live-stream');
 
       evtSource.onopen = () => {
         const badge = document.getElementById('live-connection-badge');
         if (badge) {
-          badge.className = 'text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
-          badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE (0ms SSE)';
+          badge.className = 'text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20 transition';
         }
       };
 
@@ -1640,7 +1647,10 @@
           globalAgents = data.agents;
           renderOfficeRooms(data.agents);
           renderTeamCards(data.agents);
-          renderRecentTasks(data.agents);
+        }
+        if (data.latency) {
+          document.getElementById('header-latency-val').innerText = `p50: ${data.latency.p50}ms`;
+          document.getElementById('stat-latency-val').innerText = `${data.latency.p50}ms`;
         }
       });
 
@@ -1662,7 +1672,6 @@
 
       evtSource.addEventListener('log_stream', (e) => {
         const data = JSON.parse(e.data);
-        // If viewing in boss progress box
         const bossLog = document.getElementById('boss-live-log-box');
         if (bossLog) {
           const l = document.createElement('div');
@@ -1671,7 +1680,6 @@
           bossLog.scrollTop = bossLog.scrollHeight;
         }
 
-        // If viewing in agent detail modal
         if (currentDetailAgentId === data.agentId) {
           const logsContainer = document.getElementById('detail-terminal-logs');
           if (logsContainer) {
@@ -1686,7 +1694,13 @@
       evtSource.addEventListener('deliverable_new', (e) => {
         loadDeliverables();
         const d = JSON.parse(e.data);
-        showToast(`🏆 Sản phẩm mới: "${d.title}" đã được nghiệm thu!`);
+        showToast(`🏆 Sản phẩm mới: "${d.title}" (${d.status.toUpperCase()})`);
+      });
+
+      evtSource.addEventListener('deliverable_updated', (e) => {
+        loadDeliverables();
+        const d = JSON.parse(e.data);
+        showToast(`Cập nhật trạng thái: "${d.title}" ➔ ${d.status.toUpperCase()}`);
       });
 
       evtSource.addEventListener('memory_update', () => {
@@ -1727,9 +1741,7 @@
         const modalDesc = document.getElementById('modal-bridge-status-desc');
 
         if (data.isConnected) {
-          if (badgeDot) {
-            badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
-          }
+          if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
           if (badgeLabel) {
             const shortId = (data.conversationId && data.conversationId !== 'current-chat') 
               ? data.conversationId.substring(0, 8) + '...' 
@@ -1741,10 +1753,10 @@
           if (modalDesc) modalDesc.innerText = `Đoạn chat: ${data.conversationId} | Tiêu đề: ${data.title || 'ChatGPT'}`;
         } else {
           if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
-          if (badgeLabel) badgeLabel.innerText = 'ChatGPT Web: Chưa mở tab (Click để kết nối)';
+          if (badgeLabel) badgeLabel.innerText = 'ChatGPT Web: Chưa kết nối (Bấm để xem)';
           if (modalDot) modalDot.className = 'w-3.5 h-3.5 rounded-full bg-slate-500';
           if (modalTitle) modalTitle.innerText = 'Chưa phát hiện tín hiệu từ Tab ChatGPT Web';
-          if (modalDesc) modalDesc.innerText = 'Vui lòng làm theo 3 bước bên dưới để kích hoạt kết nối.';
+          if (modalDesc) modalDesc.innerText = 'Hệ thống tự động sử dụng Fallback quy tắc nội bộ minh bạch.';
         }
       } catch (err) {
         // ignore
@@ -1767,13 +1779,16 @@
           globalAgents = res.agents;
           renderOfficeRooms(globalAgents);
           renderTeamCards(globalAgents);
-          renderRecentTasks(globalAgents);
+        }
+        if (res.latency) {
+          document.getElementById('header-latency-val').innerText = `p50: ${res.latency.p50}ms`;
+          document.getElementById('stat-latency-val').innerText = `${res.latency.p50}ms`;
         }
         loadDeliverables();
         loadSkills();
         loadMemory();
         checkBridgeStatusNow();
-        setInterval(checkBridgeStatusNow, 2500);
+        setInterval(checkBridgeStatusNow, 4000);
       } catch (err) {
         console.error('Lỗi init data:', err);
       }

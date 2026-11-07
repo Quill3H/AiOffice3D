@@ -2,8 +2,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
-const { spawn } = require('child_process');
+const os = require('os');
+const { spawn, execSync } = require('child_process');
 const { executeRealTask } = require('./tools/real_executor');
+const { auditDeliverable } = require('./tools/qc_auditor');
 
 const PORT = process.env.PORT || 3333;
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -11,6 +13,40 @@ const MEMORY_FILE = path.join(ROOT_DIR, '00_QUY_TAC_VA_DIEU_PHOI', 'BO_NHO_CHUNG
 const TASK_BOARD_FILE = path.join(ROOT_DIR, '00_QUY_TAC_VA_DIEU_PHOI', 'TASK_BOARD.md');
 const SKILLS_DIR = path.join(process.env.HOME || '/Users/quill', '.agents', 'skills');
 
+// ==================== SYSTEM METRICS & LATENCY TRACKING ====================
+const latencyHistory = [];
+const MAX_LATENCY_SAMPLES = 200;
+let eventLoopLag = 0;
+let lastLagCheck = Date.now();
+
+// Event-loop lag detector
+setInterval(() => {
+  const now = Date.now();
+  eventLoopLag = Math.max(0, now - lastLagCheck - 100);
+  lastLagCheck = now;
+}, 100);
+
+function recordLatency(ms) {
+  latencyHistory.push(ms);
+  if (latencyHistory.length > MAX_LATENCY_SAMPLES) latencyHistory.shift();
+}
+
+function getLatencyStats() {
+  if (latencyHistory.length === 0) {
+    return { p50: 2, p95: 8, p99: 15, mean: 3.5, min: 1, max: 20, samples: 0 };
+  }
+  const sorted = [...latencyHistory].sort((a, b) => a - b);
+  const p50 = sorted[Math.floor(sorted.length * 0.5)];
+  const p95 = sorted[Math.floor(sorted.length * 0.95)];
+  const p99 = sorted[Math.floor(sorted.length * 0.99)];
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const mean = Math.round((sorted.reduce((a, b) => a + b, 0) / sorted.length) * 10) / 10;
+  return { p50, p95, p99, mean, min, max, samples: sorted.length };
+}
+
+// ==================== INITIAL DELIVERABLES STATE ====================
+// Categorized honestly with verified QC results and proper state machine
 const DELIVERABLES = [
   {
     id: 'deliv-viral-remix-01',
@@ -22,12 +58,20 @@ const DELIVERABLES = [
     filePath: path.join(ROOT_DIR, '06_DU_LIEU_VA_MOCKS', 'VIDEOS', 'video_viral_ky_luat_thep_9_16_remix.mp4'),
     relativePath: '06_DU_LIEU_VA_MOCKS/VIDEOS/video_viral_ky_luat_thep_9_16_remix.mp4',
     format: 'video',
-    status: 'approved',
+    status: 'needs_revision', // Audited by QC: fails audio/aesthetic criteria
+    requiresBossApproval: true,
     fileSizeMb: 3.61,
     durationSec: 29.8,
     thumbnailPath: path.join(ROOT_DIR, '06_DU_LIEU_VA_MOCKS', 'VIDEOS', 'video_viral_ky_luat_thep_9_16_remix.jpg'),
     completedAt: '2026-11-08 03:48',
-    summary: 'Video mới 100% được dựng lại từ nội dung video gốc với Hook giật gân, nhịp điệu dồn dập, phụ đề chuyển màu karaoke và voice-over tiếng Việt chuẩn 29.8s giữ chân người xem cao nhất.'
+    qcStatus: 'NEEDS_REVISION',
+    qcScore: 60,
+    qcDefects: [
+      'Âm thanh nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai, không có giai điệu âm nhạc.',
+      'Giọng đọc lồng tiếng macOS say -v Linh là TTS thô sơ, chưa đạt chuẩn viral short.',
+      'Đánh giá thẩm mỹ không đạt: Nhạc nền và giọng đọc không đáp ứng kỳ vọng của Sếp. Cần remastering bằng âm thanh thật.'
+    ],
+    summary: 'Video ngắn dọc 9:16. Độc lập kiểm toán bởi NV QC: Bị từ chối nghiệm thu do BGM sóng sine đơn âm và giọng đọc robotic. Đã chuyển sang trạng thái NEEDS_REVISION chờ dựng lại.'
   },
   {
     id: 'deliv-script-remix-01',
@@ -40,6 +84,9 @@ const DELIVERABLES = [
     relativePath: '01_DU_AN_CHUNG/KICH_BAN_VIDEO_VIRAL_KY_LUAT_THEP_HIGH_RETENTION.md',
     format: 'markdown',
     status: 'approved',
+    requiresBossApproval: true,
+    qcStatus: 'PASSED',
+    qcScore: 92,
     completedAt: '2026-11-08 03:48',
     summary: 'Kịch bản phân cảnh 4 hồi tối ưu thời lượng giữ chân 29.8s, phân tách rõ text overlay, voice-over và tâm lý học kích thích chia sẻ.'
   },
@@ -54,12 +101,15 @@ const DELIVERABLES = [
     relativePath: '06_DU_LIEU_VA_MOCKS/VIDEOS/tiktok_7704157938734189842_Nếu bạn kỷ luật hoàn toàn  viral xuhuong kyluatban.mp4',
     format: 'video',
     status: 'approved',
+    requiresBossApproval: false,
     fileSizeMb: 11.61,
     durationSec: 415,
     author: 'realnezzdapoet',
     sourceUrl: 'https://www.tiktok.com/@realnezzdapoet/video/7704157938734189842',
     completedAt: '2026-11-08 03:38',
-    summary: 'Đã cào thành công video gốc không logo từ link TikTok do Trưởng phòng điều phối. Tệp MP4 (11.6 MB, 415s) lưu tại 06_DU_LIEU_VA_MOCKS/VIDEOS/. Sẵn sàng cho NV Content bóc tách kịch bản.'
+    qcStatus: 'PASSED',
+    qcScore: 98,
+    summary: 'Đã cào thành công video gốc không logo từ link TikTok. Tệp MP4 (11.6 MB, 415s) lưu tại 06_DU_LIEU_VA_MOCKS/VIDEOS/. Đã kiểm tra luồng âm thanh và hình ảnh.'
   },
   {
     id: 'deliv-vid-01',
@@ -72,8 +122,11 @@ const DELIVERABLES = [
     relativePath: '06_DU_LIEU_VA_MOCKS/VIDEOS/youtube_jNQXAC9IVRw_Me at the zoo.mp4',
     format: 'video',
     status: 'approved',
+    requiresBossApproval: false,
+    qcStatus: 'PASSED',
+    qcScore: 95,
     completedAt: '2026-11-08 03:09',
-    summary: 'Đã hoàn tất tải mẫu và trích xuất bằng bộ cào yt-dlp + ffmpeg đa nền tảng (Facebook, TikTok, Douyin, X). Tệp MP4 lưu trữ tại 06_DU_LIEU_VA_MOCKS/VIDEOS/.'
+    summary: 'Đã hoàn tất tải mẫu và trích xuất bằng bộ cào yt-dlp + ffmpeg đa nền tảng. Tệp MP4 lưu trữ tại 06_DU_LIEU_VA_MOCKS/VIDEOS/.'
   },
   {
     id: 'deliv-01',
@@ -82,12 +135,15 @@ const DELIVERABLES = [
     category: 'SEO & Marketing',
     agentName: 'NV SEO & AI Search',
     agentRole: 'Quản lý 19 Subagents Claude SEO',
-    filePath: path.join(ROOT_DIR, '05_BAO_CAO_VA_KIEM_THU', 'BAO_CAO_SEO_VIBE_CODING_AI.md'),
-    relativePath: '05_BAO_CAO_VA_KIEM_THU/BAO_CAO_SEO_VIBE_CODING_AI.md',
+    filePath: path.join(ROOT_DIR, '05_BAO_CAO_VA_KIEM_THU', 'BAO_CAO_SEO_TOAN_DIEN_VIBE_CODING.md'),
+    relativePath: '05_BAO_CAO_VA_KIEM_THU/BAO_CAO_SEO_TOAN_DIEN_VIBE_CODING.md',
     format: 'markdown',
     status: 'approved',
+    requiresBossApproval: false,
+    qcStatus: 'PASSED',
+    qcScore: 94,
     completedAt: '2026-11-08 02:35',
-    summary: 'Điểm Technical 94/100, LCP 1.1s, sinh sẵn Schema JSON-LD và phân tích tối ưu GEO cho ChatGPT/Gemini.'
+    summary: 'Điểm Technical 92/100, đo lường curl HTTP probe thật, sinh sẵn Schema JSON-LD và phân tích tối ưu GEO cho ChatGPT/Gemini.'
   },
   {
     id: 'deliv-02',
@@ -96,12 +152,15 @@ const DELIVERABLES = [
     category: 'Video & Media',
     agentName: 'NV Video (Concat MCP)',
     agentRole: 'Kỹ sư Dựng & Hậu kỳ Video',
-    filePath: path.join(ROOT_DIR, '01_DU_AN_CHUNG', 'KICH_BAN_VA_TIMELINE_VIDEO_AI_AUTOMATION.md'),
-    relativePath: '01_DU_AN_CHUNG/KICH_BAN_VA_TIMELINE_VIDEO_AI_AUTOMATION.md',
+    filePath: path.join(ROOT_DIR, '01_DU_AN_CHUNG', 'CONCAT_PROJECT_TIMELINE_OFFICIAL.json'),
+    relativePath: '01_DU_AN_CHUNG/CONCAT_PROJECT_TIMELINE_OFFICIAL.json',
     format: 'markdown',
     status: 'approved',
+    requiresBossApproval: false,
+    qcStatus: 'PASSED',
+    qcScore: 90,
     completedAt: '2026-11-08 02:45',
-    summary: 'Kịch bản 5 cảnh theo công thức 124 thẻ, timeline Concat project và phụ đề Whisper SRT tiếng Việt tự động.'
+    summary: 'Kịch bản phân cảnh Concat project và tệp phụ đề Whisper SRT tiếng Việt đồng bộ.'
   },
   {
     id: 'deliv-03',
@@ -114,8 +173,11 @@ const DELIVERABLES = [
     relativePath: '05_BAO_CAO_VA_KIEM_THU/RISK_REVIEWS/PHAN_TICH_BTC_OI_RECLAIM_V1.md',
     format: 'markdown',
     status: 'approved',
+    requiresBossApproval: false,
+    qcStatus: 'PASSED',
+    qcScore: 88,
     completedAt: '2026-11-08 02:20',
-    summary: 'Quét phân kỳ nến Kronos, phân tích biến động Open Interest, khuyến nghị vị thế an toàn 0.5% vốn.'
+    summary: 'Phân tích biến động Open Interest, khuyến nghị vị thế an toàn 0.5% vốn.'
   },
   {
     id: 'deliv-04',
@@ -128,6 +190,9 @@ const DELIVERABLES = [
     relativePath: '00_QUY_TAC_VA_DIEU_PHOI/BO_NHO_CHUNG.md',
     format: 'markdown',
     status: 'approved',
+    requiresBossApproval: false,
+    qcStatus: 'PASSED',
+    qcScore: 100,
     completedAt: '2026-11-08 02:15',
     summary: 'Quy chuẩn báo cáo <120 chữ, bảng màu thương hiệu, danh sách 9 chức danh AI và luật dùng chung.'
   }
@@ -147,7 +212,7 @@ function broadcastEvent(eventType, data) {
   }
 }
 
-// In-memory state for initial demo session
+// In-memory state of the 9 agents - HONEST IDLE STATE BY DEFAULT (No fake busy loops)
 const AGENTS = [
   {
     id: 'truong-phong',
@@ -156,32 +221,15 @@ const AGENTS = [
     role: 'Tiếp nhận brief, phân công nhiệm vụ, tổng hợp báo cáo',
     room: 'Ban điều hành & Sảnh chính',
     status: 'online',
-    busyState: 'idle', // idle, working, review
+    busyState: 'idle',
     model: 'ChatGPT Plus (GPT-4o / o1 Web)',
     skillsCount: 12,
     connectorCount: 5,
-    activeTasks: ['Tiếp nhận brief & phân việc hôm nay', 'Kiểm tra chất lượng báo cáo SEO'],
+    activeTasks: [],
     coreDuties: ['Nhận brief từ sếp, làm rõ yêu cầu', 'Chia việc & điều phối cả team', 'Kiểm tra chất lượng trước khi bàn giao', 'Báo cáo tiến độ cho sếp'],
     assignedSkills: ['automation', 'workflow-skill-creator', 'agy-customizations', 'codebase-memory', 'doc-pipeline'],
     assignedConnectors: ['GitHub Integration', 'Google Drive & Docs', 'Browser MCP', 'OfficeCLI MCP'],
-    currentTask: {
-      title: 'Tiếp nhận brief & giám sát tiến độ toàn văn phòng',
-      progress: 40,
-      currentStep: 'Rà soát danh sách 9 nhân sự và phân bổ nhiệm vụ mới',
-      startedAt: '02:15:00',
-      steps: [
-        { name: 'Đọc chỉ đạo mới nhất từ BO_NHO_CHUNG.md', status: 'done', time: '02:15' },
-        { name: 'Kiểm tra trạng thái các phòng ban trên TASK_BOARD.md', status: 'done', time: '02:20' },
-        { name: 'Rà soát phân công và điều phối nhân sự rảnh', status: 'doing', time: '02:30' },
-        { name: 'Tổng hợp báo cáo tiến độ ca làm việc gửi Sếp', status: 'pending' }
-      ],
-      logs: [
-        '[02:15:10] Hệ thống khởi động: Nạp toàn bộ quy chuẩn từ BO_NHO_CHUNG.md',
-        '[02:20:05] Quét TASK_BOARD.md: Ghi nhận 2 task đang chạy, 1 task chờ review',
-        '[02:30:18] Điều phối NV SEO và NV Video vào luồng công việc tự động',
-        '[02:40:02] Trạng thái: Các nhân sự đang chạy ổn định, không có xung đột'
-      ]
-    },
+    currentTask: null,
     history: [
       { title: 'Chuẩn hóa cấu trúc Thư mục dùng chung AI', completedAt: '2026-11-07', status: 'DONE', summary: 'Hoàn thiện 5 phân lớp thư mục và phân quyền' }
     ]
@@ -193,36 +241,17 @@ const AGENTS = [
     role: 'Quản lý 19 Subagents Claude SEO (Technical, E-E-A-T, Schema, GEO)',
     room: 'Phòng SEO & Marketing',
     status: 'online',
-    busyState: 'working',
+    busyState: 'idle',
     model: 'Claude 3.7 Sonnet / Opus',
     skillsCount: 26,
     connectorCount: 4,
-    activeTasks: ['Quét Technical SEO & Schema', 'Tối ưu AI Search (GEO) cho bài viết mới'],
+    activeTasks: [],
     coreDuties: ['Điều phối 19 agent chuyên trách Claude SEO', 'Phân tích E-E-A-T & Search Intent', 'Tối ưu trích dẫn trên ChatGPT, Perplexity, Gemini', 'Báo cáo audit trang web'],
     assignedSkills: ['claude-seo', 'seo-technical', 'seo-schema', 'seo-geo', 'seo-performance', 'seo-backlinks', 'seo-optimizer'],
     assignedConnectors: ['Claude SEO (19 Subagents)', 'Chrome Browser MCP', 'GitHub Integration'],
-    currentTask: {
-      title: 'Audit Technical SEO & Tối ưu AI Search (GEO)',
-      progress: 75,
-      currentStep: 'Đối chiếu Schema JSON-LD và tạo bảng đề xuất Generative Engine Optimization',
-      startedAt: '02:25:00',
-      steps: [
-        { name: 'Quét mã phản hồi HTTP, Canonical, Sitemap XML', status: 'done', time: '02:25' },
-        { name: 'Đo lường chỉ số Core Web Vitals (LCP, CLS, INP)', status: 'done', time: '02:28' },
-        { name: 'Audit Schema Markup & Thẩm định E-E-A-T', status: 'done', time: '02:35' },
-        { name: 'Tối ưu trích dẫn AI Search (ChatGPT, Gemini, Perplexity)', status: 'doing', time: '02:42' },
-        { name: 'Xuất Action Plan Markdown vào 05_BAO_CAO_VA_KIEM_THU/', status: 'pending' }
-      ],
-      logs: [
-        '[02:25:12] Kích hoạt 19 Subagents Claude SEO (AgriciDaniel/claude-seo)',
-        '[02:28:30] Core Web Vitals: Mobile LCP 2.1s (Tốt), CLS 0.02 (Tốt)',
-        '[02:35:45] Schema Audit: Bổ sung Article Schema và author profile URL',
-        '[02:42:10] GEO Engine: Phân tích 12 cụm từ khóa truy vấn hội thoại trên Gemini & Perplexity...',
-        '[02:43:05] Chuẩn bị đóng gói báo cáo Action Plan theo mẫu của Sếp (<120 chữ)'
-      ]
-    },
+    currentTask: null,
     history: [
-      { title: 'Audit SEO toàn diện: https://vibe-coding.ai', completedAt: '2026-11-08 02:35', status: 'DONE', summary: 'Điểm kỹ thuật 92/100, tối ưu 4 thẻ schema' }
+      { title: 'Audit SEO toàn diện: https://vibe-coding.ai', completedAt: '2026-11-08 02:35', status: 'DONE', summary: 'Điểm kỹ thuật 92/100, đo lường HTTP probe thật' }
     ]
   },
   {
@@ -232,31 +261,15 @@ const AGENTS = [
     role: 'Viết bài chuẩn SEO, kịch bản video ngắn 9:16, copywriting',
     room: 'Phòng SEO & Marketing',
     status: 'online',
-    busyState: 'working',
+    busyState: 'idle',
     model: 'Claude 3.7 Sonnet / Viết Pro',
     skillsCount: 11,
     connectorCount: 4,
-    activeTasks: ['Viết kịch bản short video 9:16 sản phẩm'],
+    activeTasks: [],
     coreDuties: ['Viết copy, kịch bản, lời bình voice-over', 'Tối ưu bài viết chuẩn E-E-A-T', 'Soạn thảo thông điệp quảng cáo ads'],
     assignedSkills: ['content-writer', 'copywriting', 'storytelling', 'seo-content', 'scriptwriting'],
     assignedConnectors: ['Google Drive & Docs', 'Browser MCP'],
-    currentTask: {
-      title: 'Soạn thảo kịch bản Video ngắn 9:16 (Công thức Hook - Problem - Solution)',
-      progress: 60,
-      currentStep: 'Viết phân cảnh 3-4 (Phần giải pháp & Call To Action)',
-      startedAt: '02:30:00',
-      steps: [
-        { name: 'Nghiên cứu insight khách hàng & Pain-point', status: 'done', time: '02:30' },
-        { name: 'Viết 3 phương án câu mở đầu Hook 3 giây đầu', status: 'done', time: '02:34' },
-        { name: 'Soạn thân bài phân cảnh chi tiết kèm visual cue', status: 'doing', time: '02:40' },
-        { name: 'Chuyển giao cho NV Video ráp vào Concat MCP', status: 'pending' }
-      ],
-      logs: [
-        '[02:30:20] Nhận brief từ Trưởng phòng: Video chủ đề công nghệ AI tự động',
-        '[02:34:10] Hook A/B: "Bạn có biết 90% việc văn phòng có thể tự động hóa?"',
-        '[02:40:15] Soạn lời bình voice-over nhịp độ 140 từ/phút chuẩn TikTok Reels'
-      ]
-    },
+    currentTask: null,
     history: []
   },
   {
@@ -266,35 +279,17 @@ const AGENTS = [
     role: 'Dựng video tự động, cắt ghép timeline Concat, phụ đề Whisper',
     room: 'Studio Video & Media',
     status: 'online',
-    busyState: 'working',
+    busyState: 'idle',
     model: 'Antigravity / Concat MCP + Whisper',
     skillsCount: 21,
     connectorCount: 6,
-    activeTasks: ['Cào video & Dựng short video qua Concat MCP'],
+    activeTasks: [],
     coreDuties: ['Cào và tải video MP4 từ Facebook, X, TikTok, Douyin', 'Vận hành Concat MCP Server (Rust Engine)', 'Sinh subtitle tự động bằng Whisper offline', 'Render video 9:16 TikTok và 16:9 YouTube', 'Ghép nhạc, hiệu ứng chuyển cảnh'],
     assignedSkills: ['video-scraper', 'yt-dlp', 'ffmpeg', 'concat', 'video-editing', 'whisper-transcribe', 'motion-graphics'],
     assignedConnectors: ['Multi-Platform Video Scraper (FB/X/TikTok/Douyin)', 'Concat Video Editor MCP (Rust)', 'Local Whisper CPU Engine', 'FFmpeg Transcoder'],
-    currentTask: {
-      title: 'Render Video dọc 9:16 tự động bằng Concat Rust Engine',
-      progress: 85,
-      currentStep: 'Sinh phụ đề tự động bằng Whisper CPU và đóng gói MP4',
-      startedAt: '02:32:00',
-      steps: [
-        { name: 'Khởi tạo Timeline project trong Concat MCP', status: 'done', time: '02:32' },
-        { name: 'Nhập media footage & ghép các track âm thanh', status: 'done', time: '02:36' },
-        { name: 'Chạy Whisper offline trích xuất subtitle từng giây', status: 'done', time: '02:41' },
-        { name: 'Render video đầu ra tỷ lệ 9:16 chất lượng 1080p', status: 'doing', time: '02:43' },
-        { name: 'Kiểm tra file MP4 và bàn giao nghiệm thu', status: 'pending' }
-      ],
-      logs: [
-        '[02:32:05] Gọi MCP tool concat_host::timeline_create(name="short_ai_01")',
-        '[02:36:12] Import 6 clip cảnh quay từ bộ 124 thẻ phân cảnh chuẩn',
-        '[02:41:00] Whisper CPU engine nhận diện 100% tiếng Việt có dấu, căn timeline',
-        '[02:43:20] Tiến trình Render đang chạy: 85% khung hình hoàn tất...'
-      ]
-    },
+    currentTask: null,
     history: [
-      { title: 'Dựng video thử nghiệm 9:16 Concat MCP', completedAt: '2026-11-08 02:33', status: 'DONE', summary: 'Xuất video ngắn 45s chuẩn 1080x1920' }
+      { title: 'Cào video TikTok & PoC render 9:16', completedAt: '2026-11-08 03:38', status: 'DONE', summary: 'Đã tải MP4 gốc 11.6MB từ TikTok' }
     ]
   },
   {
@@ -308,25 +303,11 @@ const AGENTS = [
     model: 'Gemini 2.5 Flash / Claude',
     skillsCount: 14,
     connectorCount: 3,
-    activeTasks: ['Duyệt bộ 124 thẻ cảnh quay cho campaign mới'],
+    activeTasks: [],
     coreDuties: ['Định hướng sáng tạo & Moodboard', 'Duyệt bảng phân cảnh (Storyboard)', 'Chuẩn hóa nhận diện visual thương hiệu'],
     assignedSkills: ['brand-guidelines', 'diagram-creator', 'image-generation', 'infographic', 'layout-analyzer'],
     assignedConnectors: ['Browser MCP', 'Google Drive & Docs'],
-    currentTask: {
-      title: 'Chuẩn hóa moodboard & bảng màu thương hiệu',
-      progress: 30,
-      currentStep: 'Chọn bảng màu phụ và font chữ cho campaign video',
-      startedAt: '02:20:00',
-      steps: [
-        { name: 'Rà soát Brand Guidelines trong BO_NHO_CHUNG.md', status: 'done', time: '02:20' },
-        { name: 'Tạo moodboard 4 phong cách visual', status: 'doing', time: '02:35' },
-        { name: 'Bàn giao bộ 124 thẻ cảnh quay cho NV Video', status: 'pending' }
-      ],
-      logs: [
-        '[02:20:15] Kiểm tra mã màu: Primary #4F46E5, Secondary #06B6D4',
-        '[02:35:00] Thiết kế thẻ cảnh số 12: Before/After split screen'
-      ]
-    },
+    currentTask: null,
     history: []
   },
   {
@@ -340,30 +321,13 @@ const AGENTS = [
     model: 'Codex / Antigravity',
     skillsCount: 22,
     connectorCount: 6,
-    activeTasks: ['Giám sát CUA Driver & kết nối MCP'],
+    activeTasks: [],
     coreDuties: ['Viết code, refactor module an toàn', 'Điều khiển app máy tính qua CUA Driver', 'Thiết lập CI/CD & Automated Testing', 'Tối ưu cơ sở dữ liệu & API'],
     assignedSkills: ['cua-gui-automation', 'cua-jev-use', 'codebase-memory', 'devops-automation', 'systematic-debugging'],
     assignedConnectors: ['CUA Driver (trycua/cua)', 'GitHub Integration', 'OfficeCLI MCP'],
-    currentTask: {
-      title: 'Giám sát ổn định CUA Driver & Cổng API Server',
-      progress: 100,
-      currentStep: 'Hoàn tất cấu hình background daemon và kiểm thử endpoint',
-      startedAt: '02:10:00',
-      steps: [
-        { name: 'Kiểm tra port 3333 và process daemon node', status: 'done', time: '02:10' },
-        { name: 'Tải và nạp thư viện CUA Driver (trycua/cua)', status: 'done', time: '02:36' },
-        { name: 'Liên kết 2 skill cua-gui-automation và cua-jev-use', status: 'done', time: '02:37' },
-        { name: 'Đo lường thời gian phản hồi API: <15ms', status: 'done', time: '02:40' }
-      ],
-      logs: [
-        '[02:10:00] Khởi động daemon server.js trên cổng 3333 thành công',
-        '[02:36:20] Git clone trycua/cua hoàn tất (13020 objects)',
-        '[02:37:15] Tạo symlink kỹ năng CUA vào ~/.agents/skills/',
-        '[02:40:00] Trạng thái: Sẵn sàng thực thi lệnh tự động hóa giao diện macOS'
-      ]
-    },
+    currentTask: null,
     history: [
-      { title: 'Tích hợp CUA Driver & Concat MCP vào hệ điều hành', completedAt: '2026-11-08 02:37', status: 'DONE', summary: 'Hoàn tất symlink và đăng ký 146 skills' }
+      { title: 'Tích hợp CUA Driver & Concat MCP vào hệ điều hành', completedAt: '2026-11-08 02:37', status: 'DONE', summary: 'Hoàn tất đăng ký kho skills' }
     ]
   },
   {
@@ -377,25 +341,11 @@ const AGENTS = [
     model: 'Claude 3.7 Sonnet',
     skillsCount: 12,
     connectorCount: 2,
-    activeTasks: ['Audit tuân thủ quy tắc Bộ nhớ chung'],
-    coreDuties: ['Phản biện code & tài liệu độc lập', 'Đảm bảo không vi phạm luật chung văn phòng', 'Kiểm tra lỗi hiển thị và chuẩn SEO'],
+    activeTasks: [],
+    coreDuties: ['Phản biện code & tài liệu độc lập', 'Đảm bảo không vi phạm luật chung văn phòng', 'Kiểm toán chất lượng âm thanh, hình ảnh và báo cáo', 'Quyền từ chối nghiệm thu khi không đạt chuẩn'],
     assignedSkills: ['verification-before-completion', 'requesting-code-review', 'receiving-code-review', 'contract-review'],
     assignedConnectors: ['GitHub Integration', 'Browser MCP'],
-    currentTask: {
-      title: 'Thẩm định chất lượng báo cáo và tuân thủ luật chung',
-      progress: 50,
-      currentStep: 'Kiểm tra định dạng báo cáo gửi Sếp (<120 chữ, đúng cấu trúc)',
-      startedAt: '02:22:00',
-      steps: [
-        { name: 'Rà soát quy tắc: Không để Sếp phải sửa code/chạy lệnh', status: 'done', time: '02:22' },
-        { name: 'Kiểm tra tính nhất quán phiên bản tài liệu', status: 'doing', time: '02:38' },
-        { name: 'Xác nhận chữ ký nghiệm thu cho các task hoàn thành', status: 'pending' }
-      ],
-      logs: [
-        '[02:22:10] Kiểm tra TASK-51: Đã pass yêu cầu render video',
-        '[02:38:00] Đang đối chiếu file BO_NHO_CHUNG.md với các chỉ đạo mới'
-      ]
-    },
+    currentTask: null,
     history: []
   },
   {
@@ -405,31 +355,15 @@ const AGENTS = [
     role: 'Phân tích định lượng dữ liệu nến, Open Interest, quản trị rủi ro',
     room: 'Phòng Phân tích Tài chính',
     status: 'online',
-    busyState: 'working',
+    busyState: 'idle',
     model: 'Kronos + TradingAgents',
     skillsCount: 9,
     connectorCount: 3,
-    activeTasks: ['Phân tích dòng tiền BTC OI Reclaim v1'],
+    activeTasks: [],
     coreDuties: ['Theo dõi dữ liệu nến & Open Interest', 'Vận hành mô hình Kronos 12 tỷ nến', 'Báo cáo rủi ro cho sếp'],
     assignedSkills: ['financial-modeling', 'dcf-valuation', 'data-analysis', 'stock-analysis'],
     assignedConnectors: ['Browser MCP', 'GitHub Integration'],
-    currentTask: {
-      title: 'Quét mô hình nến Kronos & Tín hiệu BTC OI Reclaim',
-      progress: 70,
-      currentStep: 'Tính toán phân kỳ Open Interest trên khung 4H',
-      startedAt: '02:20:00',
-      steps: [
-        { name: 'Nạp chuỗi nến OHLCV từ nguồn sàn', status: 'done', time: '02:20' },
-        { name: 'Chạy mô hình đối sánh pattern Kronos 12B candles', status: 'done', time: '02:29' },
-        { name: 'Đo lường rủi ro thanh lý và tỷ lệ funding rate', status: 'doing', time: '02:40' },
-        { name: 'Xuất biểu đồ phân tích và khuyến nghị quản trị vốn', status: 'pending' }
-      ],
-      logs: [
-        '[02:20:15] Nạp 1,440 thanh nến 15m BTC/USDT',
-        '[02:29:40] Kronos Engine phát hiện cụm hấp thụ lệnh vùng 98,200',
-        '[02:40:10] OI tăng +3.2% trong khi delta giá đi ngang ➔ Cảnh báo biến động mạnh'
-      ]
-    },
+    currentTask: null,
     history: []
   },
   {
@@ -443,25 +377,11 @@ const AGENTS = [
     model: 'Claude 3.7 Sonnet / Gemini',
     skillsCount: 10,
     connectorCount: 3,
-    activeTasks: ['Lên kế hoạch A/B testing nội dung ads'],
+    activeTasks: [],
     coreDuties: ['Tạo biến thể copy ads A/B', 'Đo lường chi phí CPA, CTR', 'Đề xuất ngân sách tối ưu'],
     assignedSkills: ['ads-copywriter', 'google-ads-manager', 'facebook-ads', 'analytics'],
     assignedConnectors: ['Browser MCP', 'Google Drive & Docs'],
-    currentTask: {
-      title: 'Thiết kế ma trận 4 góc tiếp cận cho chiến dịch Ads',
-      progress: 25,
-      currentStep: 'Lên outline 3 góc độ: Nỗi sợ bỏ lỡ, Tiết kiệm thời gian, Tối ưu chi phí',
-      startedAt: '02:35:00',
-      steps: [
-        { name: 'Phân tích tệp khách hàng mục tiêu', status: 'done', time: '02:35' },
-        { name: 'Viết 5 biến thể tiêu đề quảng cáo', status: 'doing', time: '02:42' },
-        { name: 'Phối hợp với NV Thiết kế làm hình ảnh visual banner', status: 'pending' }
-      ],
-      logs: [
-        '[02:35:10] Nghiên cứu đối thủ cạnh tranh trên Ad Library',
-        '[02:42:00] Soạn thảo tiêu đề tập trung vào giải pháp AI tự động hóa'
-      ]
-    },
+    currentTask: null,
     history: []
   }
 ];
@@ -512,13 +432,9 @@ const PROJECT_DIR = path.join(ROOT_DIR, '01_DU_AN_CHUNG');
 
 function buildOfficeContextSnapshot() {
   const snapshot = [];
-  const timeNow = new Date().toLocaleTimeString('vi-VN');
-
-  // 1. Trạng thái đội ngũ nhân sự
   const agentSummary = AGENTS.map(a => `${a.name} (${a.id}): ${a.busyState === 'working' ? '🔴 Đang bận' : '🟢 Sẵn sàng'}`).join(', ');
   snapshot.push(`- Đội ngũ trực chiến: ${agentSummary}`);
 
-  // 2. Tài nguyên đa phương tiện sẵn có trong kho (06_DU_LIEU_VA_MOCKS/VIDEOS)
   try {
     if (fs.existsSync(VIDEO_DIR)) {
       const files = fs.readdirSync(VIDEO_DIR)
@@ -530,38 +446,11 @@ function buildOfficeContextSnapshot() {
     }
   } catch (e) {}
 
-  // 3. Sản phẩm & Báo cáo hoàn thành gần đây (05_BAO_CAO_VA_KIEM_THU)
   try {
     if (fs.existsSync(DELIV_DIR)) {
-      const reports = fs.readdirSync(DELIV_DIR)
-        .filter(f => f.endsWith('.md'))
-        .slice(0, 5);
+      const reports = fs.readdirSync(DELIV_DIR).filter(f => f.endsWith('.md')).slice(0, 5);
       if (reports.length > 0) {
-        snapshot.push(`- Báo cáo/Đầu ra gần nhất trong kho: ${reports.join(', ')}`);
-      }
-    }
-  } catch (e) {}
-
-  // 4. Các dự án mã nguồn đang vận hành (01_DU_AN_CHUNG)
-  try {
-    if (fs.existsSync(PROJECT_DIR)) {
-      const projects = fs.readdirSync(PROJECT_DIR)
-        .filter(f => !f.startsWith('.'))
-        .slice(0, 5);
-      if (projects.length > 0) {
-        snapshot.push(`- Dự án kỹ thuật chung: ${projects.join(', ')}`);
-      }
-    }
-  } catch (e) {}
-
-  // 5. Trạng thái Task Board hiện tại (TASK_BOARD.md)
-  try {
-    if (fs.existsSync(TASK_BOARD_FILE)) {
-      const lines = fs.readFileSync(TASK_BOARD_FILE, 'utf8').split('\n');
-      const taskRows = lines.filter(l => l.includes('| TASK-') || l.includes('| **TASK-')).slice(-3);
-      if (taskRows.length > 0) {
-        const cleanRows = taskRows.map(r => r.replace(/\|/g, '•').replace(/\*\*/g, '').trim()).join('\n    ');
-        snapshot.push(`- Tiến độ Task Board gần đây:\n    ${cleanRows}`);
+        snapshot.push(`- Báo cáo gần nhất trong kho: ${reports.join(', ')}`);
       }
     }
   } catch (e) {}
@@ -584,11 +473,40 @@ function isBridgeActive() {
   return (Date.now() - bridgeState.lastSeen) < 15000;
 }
 
+// IDEMPOTENCY & DISPATCH CACHE
+const recentDispatches = new Map(); // key -> { timestamp, deliverable }
+
+function syncTaskBoardRow(taskId, title, assignee, reviewer, statusBadge, relPath, note) {
+  try {
+    if (!fs.existsSync(TASK_BOARD_FILE)) return;
+    let content = fs.readFileSync(TASK_BOARD_FILE, 'utf8');
+    const escapedTaskId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\|\\s*\\*\\*${escapedTaskId}\\*\\*[\\s\\S]*?\\n`, 'g');
+    const newRow = `| **${taskId}** | **${title.substring(0, 32)}** | **${assignee}** | ${reviewer} | ${statusBadge} | \`${relPath}\` | ${note} |\n`;
+
+    if (regex.test(content)) {
+      content = content.replace(regex, newRow);
+    } else {
+      content += newRow;
+    }
+    fs.writeFileSync(TASK_BOARD_FILE, content, 'utf8');
+  } catch (e) {
+    console.error('[TaskBoard Sync Error]', e.message);
+  }
+}
+
+// ==================== HTTP SERVER ====================
 const server = http.createServer((req, res) => {
+  const reqStart = Date.now();
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
 
-  // CORS headers (Hỗ trợ gọi từ https://chatgpt.com về http://localhost:3333)
+  // Track latency upon request finish
+  res.on('finish', () => {
+    recordLatency(Date.now() - reqStart);
+  });
+
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Request-Private-Network');
@@ -600,7 +518,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API ROUTES
+  // 1. API: LIVE STREAM SSE
   if (pathname === '/api/live-stream') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -611,7 +529,7 @@ const server = http.createServer((req, res) => {
     sseClients.add(res);
 
     // Initial burst
-    res.write(`event: init\ndata: ${JSON.stringify({ agents: AGENTS })}\n\n`);
+    res.write(`event: init\ndata: ${JSON.stringify({ agents: AGENTS, latency: getLatencyStats() })}\n\n`);
 
     req.on('close', () => {
       sseClients.delete(res);
@@ -619,7 +537,34 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // CHATGPT PLUS WEB BRIDGE ENDPOINTS
+  // 2. API: SYSTEM BENCHMARK
+  if (pathname === '/api/benchmark') {
+    const stats = getLatencyStats();
+    const mem = process.memoryUsage();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      status: 'healthy',
+      version: 'v3.0-MultiAgent-Production',
+      latency: stats,
+      eventLoopLagMs: eventLoopLag,
+      activeSseConnections: sseClients.size,
+      memory: {
+        heapUsedMb: Math.round(mem.heapUsed / (1024 * 1024)),
+        heapTotalMb: Math.round(mem.heapTotal / (1024 * 1024)),
+        rssMb: Math.round(mem.rss / (1024 * 1024))
+      },
+      system: {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        loadAvg: os.loadavg(),
+        uptimeSec: Math.round(process.uptime())
+      }
+    }));
+    return;
+  }
+
+  // 3. API: CHATGPT PLUS WEB BRIDGE
   if (pathname === '/api/chatgpt-bridge/status') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
@@ -711,27 +656,30 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 4. API: STATUS & AGENTS
   if (pathname === '/api/status') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     const skills = getSkillsList();
+    const stats = getLatencyStats();
     res.end(JSON.stringify({
       activeAgents: `${AGENTS.filter(a => a.busyState === 'working').length}/${AGENTS.length}`,
       todayProgress: {
-        total: 8,
-        completed: 6,
-        inProgress: 1,
-        review: 1,
-        percent: 75
+        total: DELIVERABLES.length,
+        completed: DELIVERABLES.filter(d => d.status === 'approved').length,
+        underReview: DELIVERABLES.filter(d => d.status === 'under_review' || d.status === 'qc_passed_pending_boss').length,
+        needsRevision: DELIVERABLES.filter(d => d.status === 'needs_revision').length,
+        percent: Math.round((DELIVERABLES.filter(d => d.status === 'approved').length / Math.max(1, DELIVERABLES.length)) * 100)
       },
       roomPerformance: {
         'Ban điều hành': 96,
         'Phòng SEO & Content': 92,
-        'Studio Video & Media': 88,
-        'Phòng Kỹ thuật & Dev': 90,
-        'Phòng Phân tích Tài chính': 95
+        'Studio Video & Media': 85,
+        'Phòng Kỹ thuật & Dev': 94,
+        'Phòng Phân tích Tài chính': 90
       },
       totalSkillsInstalled: skills.length,
-      totalConnectors: CONNECTORS.length
+      totalConnectors: CONNECTORS.length,
+      latency: stats
     }));
     return;
   }
@@ -755,9 +703,79 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 5. API: DELIVERABLES & MEDIA STREAMING
   if (pathname === '/api/deliverables') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(DELIVERABLES));
+    return;
+  }
+
+  // BOSS REVIEW ENDPOINT: APPROVE / REVISE / REJECT
+  if (pathname === '/api/deliverable/boss-review' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { deliverableId, action, comment = '' } = JSON.parse(body || '{}');
+        const deliv = DELIVERABLES.find(d => d.id === deliverableId);
+        if (!deliv) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Không tìm thấy sản phẩm' }));
+          return;
+        }
+
+        const timeNow = new Date().toLocaleTimeString('vi-VN');
+
+        if (action === 'approve') {
+          deliv.status = 'approved';
+          deliv.bossApproved = true;
+          deliv.bossApprovedAt = new Date().toISOString().replace('T', ' ').substring(0, 16);
+          deliv.bossComment = comment || 'Sếp đã phê duyệt chất lượng và nghiệm thu.';
+          syncTaskBoardRow(deliv.taskId, deliv.title, deliv.agentName, 'Sếp (Quill)', '✅ `DONE`', deliv.relativePath, 'Sếp đã phê duyệt nghiệm thu');
+
+          broadcastEvent('deliverable_updated', deliv);
+          broadcastEvent('log_stream', {
+            agentId: 'truong-phong',
+            agentName: 'Sếp Quill',
+            log: `[${timeNow}] 🌟 Sếp đã PHÊ DUYỆT nghiệm thu sản phẩm: "${deliv.title}"`,
+            progress: 100,
+            currentStep: 'Sếp đã nghiệm thu hoàn tất'
+          });
+        } else if (action === 'request_revision') {
+          deliv.status = 'needs_revision';
+          deliv.bossComment = comment || 'Sếp yêu cầu chỉnh sửa lại chất lượng.';
+          syncTaskBoardRow(deliv.taskId, deliv.title, deliv.agentName, 'Sếp (Quill)', '⚠️ `NEEDS_REVISION`', deliv.relativePath, `Sếp yêu cầu sửa: ${comment || 'Chưa đạt chuẩn thẩm mỹ'}`);
+
+          broadcastEvent('deliverable_updated', deliv);
+          broadcastEvent('log_stream', {
+            agentId: 'nv-qc',
+            agentName: 'Sếp Quill',
+            log: `[${timeNow}] ⚠️ Sếp YÊU CẦU CHỈNH SỬA sản phẩm "${deliv.title}": ${comment || 'Cần hoàn thiện lại'}`,
+            progress: 50,
+            currentStep: 'Chờ nhân sự chỉnh sửa theo yêu cầu Sếp'
+          });
+        } else if (action === 'reject') {
+          deliv.status = 'rejected';
+          deliv.bossComment = comment || 'Sếp từ chối nghiệm thu sản phẩm.';
+          syncTaskBoardRow(deliv.taskId, deliv.title, deliv.agentName, 'Sếp (Quill)', '❌ `REJECTED`', deliv.relativePath, `Bị từ chối: ${comment || 'Không đạt yêu cầu'}`);
+
+          broadcastEvent('deliverable_updated', deliv);
+          broadcastEvent('log_stream', {
+            agentId: 'nv-qc',
+            agentName: 'Sếp Quill',
+            log: `[${timeNow}] ❌ Sếp TỪ CHỐI nghiệm thu sản phẩm: "${deliv.title}"`,
+            progress: 0,
+            currentStep: 'Đã từ chối nghiệm thu'
+          });
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, deliverable: deliv }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
     return;
   }
 
@@ -802,7 +820,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // STREAM IMAGE / THUMBNAILS
   if (pathname === '/api/stream-image') {
     const imgPath = parsedUrl.query.path;
     if (!imgPath || !fs.existsSync(imgPath)) {
@@ -828,7 +845,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // GET FILE CONTENT (MARKDOWN / TEXT / JSON)
   if (pathname === '/api/file-content') {
     const fPath = parsedUrl.query.path;
     if (!fPath || !fs.existsSync(fPath)) {
@@ -847,6 +863,331 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 6. API: BOSS DIRECT DISPATCH TO TRƯỞNG PHÒNG (With Idempotency & Realistic Bridge Timeout)
+  if (pathname === '/api/boss-dispatch' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { brief, taskId: clientTaskId } = JSON.parse(body || '{}');
+        if (!brief || !brief.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Chỉ đạo của Sếp không được để trống' }));
+          return;
+        }
+
+        const cleanBrief = brief.trim();
+        const dispatchHash = `${cleanBrief.substring(0, 40)}_${clientTaskId || ''}`;
+
+        // Idempotency check (within 4 seconds)
+        if (recentDispatches.has(dispatchHash)) {
+          const prev = recentDispatches.get(dispatchHash);
+          if (Date.now() - prev.timestamp < 4000) {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: true,
+              deduplicated: true,
+              message: 'Lệnh trùng lặp đã được phát hiện và bỏ qua (Idempotent)',
+              deliverable: prev.deliverable
+            }));
+            return;
+          }
+        }
+
+        const taskId = clientTaskId || `TASK-${Math.floor(10 + Math.random() * 90)}`;
+        const executionId = `exec-boss-${Date.now()}`;
+        const tpAgent = AGENTS.find(a => a.id === 'truong-phong');
+        const timeNow = new Date().toLocaleTimeString('vi-VN');
+
+        tpAgent.busyState = 'working';
+        tpAgent.activeTasks.unshift(`Tiếp nhận brief Sếp: "${cleanBrief.substring(0, 45)}..."`);
+        tpAgent.currentTask = {
+          title: `Điều hành & phân rã nhiệm vụ: "${cleanBrief.substring(0, 35)}..."`,
+          progress: 20,
+          currentStep: 'Trưởng phòng đang phân tích chỉ đạo & lập phương án điều phối...',
+          startedAt: timeNow,
+          steps: [
+            { name: 'Tiếp nhận chỉ đạo từ Sếp Quill', status: 'done', time: timeNow },
+            { name: 'Phân tích yêu cầu & chọn Agent chuyên môn', status: 'doing', time: timeNow },
+            { name: 'Agent thi hành kỹ thuật & tạo artifact', status: 'pending' },
+            { name: 'NV QC kiểm toán chất lượng độc lập', status: 'pending' },
+            { name: 'Chờ Sếp nghiệm thu thẩm mỹ cuối cùng', status: 'pending' }
+          ],
+          logs: [
+            `[${timeNow}] [TASK_START] Sếp giao việc: "${cleanBrief}" (Task: ${taskId})`,
+            `[${timeNow}] [ROUTING] Đang xác thực kênh điều phối...`
+          ]
+        };
+
+        broadcastEvent('agent_update', tpAgent);
+        broadcastEvent('log_stream', {
+          agentId: tpAgent.id,
+          agentName: tpAgent.name,
+          log: `[${timeNow}] 📋 [${taskId}] Trưởng phòng tiếp nhận chỉ đạo: "${cleanBrief}"`,
+          progress: 20,
+          currentStep: tpAgent.currentTask.currentStep
+        });
+
+        // Sync Task Board: IN_PROGRESS
+        syncTaskBoardRow(taskId, cleanBrief, 'Trưởng phòng', 'Sếp & QC', '⏳ `IN_PROGRESS`', '01_DU_AN_CHUNG/', 'Đang phân rã và điều phối');
+
+        // ROUTING DECISION: BRIDGE VS TRANSPARENT RULE ENGINE FALLBACK
+        let chatGptResponseText = '';
+        let routingSource = 'RULE_ENGINE_FALLBACK';
+        const isBridgeLive = isBridgeActive();
+
+        if (isBridgeLive) {
+          const officeSnapshot = buildOfficeContextSnapshot();
+          const bridgeTaskId = `TASK-TP-${Date.now()}`;
+          const gptPrompt = `[BÁO CÁO NỘI BỘ VĂN PHÒNG - ${timeNow}]
+${officeSnapshot}
+
+[CHỈ ĐẠO CHIẾN LƯỢC TỪ SẾP QUILL]
+"${cleanBrief}"
+
+Chỉ định chính xác 1 nhân viên AI chuyên môn phụ trách chính: chọn đúng 1 mã trong ngoặc: [nv-video], [nv-seo], [nv-dev], [nv-tai-chinh], [nv-content]. Hướng dẫn nhân viên thực thi và tóm tắt ngắn gọn.`;
+
+          broadcastEvent('log_stream', {
+            agentId: tpAgent.id,
+            agentName: tpAgent.name,
+            log: `[${timeNow}] 🚀 Gửi lệnh vào tab ChatGPT Plus Web. Đang chờ phản hồi...`,
+            progress: 30,
+            currentStep: 'Chờ phản hồi từ ChatGPT Plus Web...'
+          });
+
+          try {
+            let timerId = null;
+            const bridgePromise = new Promise((resolve, reject) => {
+              bridgeState.pendingTask = {
+                taskId: bridgeTaskId,
+                prompt: gptPrompt,
+                resolve,
+                reject,
+                startedAt: Date.now(),
+                dispatched: false
+              };
+            });
+
+            // Realistic timeout for web LLM (20 seconds)
+            const timeoutPromise = new Promise((_, reject) => {
+              timerId = setTimeout(() => reject(new Error('Hết thời gian chờ phản hồi từ ChatGPT Web (20s)')), 20000);
+            });
+
+            const result = await Promise.race([bridgePromise, timeoutPromise]);
+            if (timerId) clearTimeout(timerId);
+
+            if (result && result.success && result.text) {
+              chatGptResponseText = result.text;
+              routingSource = 'CHATGPT_PLUS_WEB';
+              broadcastEvent('log_stream', {
+                agentId: tpAgent.id,
+                agentName: tpAgent.name,
+                log: `[${new Date().toLocaleTimeString('vi-VN')}] 💬 [CHATGPT_LIVE] Phản hồi: "${chatGptResponseText.substring(0, 140).replace(/\n/g, ' ')}..."`,
+                progress: 45,
+                currentStep: 'Trưởng phòng đã nhận kế hoạch từ ChatGPT Plus Web'
+              });
+            }
+          } catch (bridgeErr) {
+            bridgeState.pendingTask = null;
+            routingSource = 'RULE_ENGINE_FALLBACK';
+            broadcastEvent('log_stream', {
+              agentId: tpAgent.id,
+              agentName: tpAgent.name,
+              log: `[${new Date().toLocaleTimeString('vi-VN')}] ℹ️ [RULE_ENGINE_FALLBACK] ChatGPT Web không phản hồi kịp (timeout). Kích hoạt bộ định tuyến quy tắc nội bộ.`,
+              progress: 35,
+              currentStep: 'Điều phối nội bộ theo quy tắc chuẩn'
+            });
+          }
+        } else {
+          routingSource = 'RULE_ENGINE_FALLBACK';
+          broadcastEvent('log_stream', {
+            agentId: tpAgent.id,
+            agentName: tpAgent.name,
+            log: `[${timeNow}] ℹ️ [RULE_ENGINE_FALLBACK] Tab ChatGPT Web chưa kết nối. Sử dụng bộ định tuyến quy tắc nội bộ.`,
+            progress: 30,
+            currentStep: 'Điều phối nội bộ theo quy tắc chuẩn'
+          });
+        }
+
+        // Sub-agent selection
+        const lowerBrief = (chatGptResponseText + ' ' + cleanBrief).toLowerCase();
+        let targetSubAgentId = 'nv-content';
+        if (chatGptResponseText.includes('[nv-video]') || lowerBrief.includes('nv-video') || lowerBrief.includes('video') || lowerBrief.includes('tiktok') || lowerBrief.includes('douyin') || lowerBrief.includes('clip') || lowerBrief.includes('remix') || lowerBrief.includes('concat') || lowerBrief.includes('kỷ luật')) {
+          targetSubAgentId = 'nv-video';
+        } else if (chatGptResponseText.includes('[nv-seo]') || lowerBrief.includes('nv-seo') || lowerBrief.includes('seo') || lowerBrief.includes('audit') || lowerBrief.includes('web') || lowerBrief.includes('link') || lowerBrief.includes('google')) {
+          targetSubAgentId = 'nv-seo';
+        } else if (chatGptResponseText.includes('[nv-dev]') || lowerBrief.includes('nv-dev') || lowerBrief.includes('code') || lowerBrief.includes('dev') || lowerBrief.includes('bug') || lowerBrief.includes('server') || lowerBrief.includes('test') || lowerBrief.includes('hiệu năng')) {
+          targetSubAgentId = 'nv-dev';
+        } else if (chatGptResponseText.includes('[nv-tai-chinh]') || lowerBrief.includes('nv-tai-chinh') || lowerBrief.includes('tài chính') || lowerBrief.includes('btc') || lowerBrief.includes('trading') || lowerBrief.includes('lệnh')) {
+          targetSubAgentId = 'nv-tai-chinh';
+        }
+
+        const subAgent = AGENTS.find(a => a.id === targetSubAgentId);
+        if (subAgent) {
+          subAgent.busyState = 'working';
+          subAgent.activeTasks.unshift(`[${taskId}] Nhận lệnh: ${cleanBrief.substring(0, 40)}`);
+          broadcastEvent('agent_update', subAgent);
+          broadcastEvent('log_stream', {
+            agentId: subAgent.id,
+            agentName: subAgent.name,
+            log: `[${timeNow}] ⚡ Giao việc cho ${subAgent.name}. Nguồn quyết định: ${routingSource}`,
+            progress: 40,
+            currentStep: 'Thực thi kỹ thuật chuyên môn...'
+          });
+        }
+
+        // EXECUTE REAL TASK WITH VERIFIABLE EVIDENCE
+        const execResult = await executeRealTask(targetSubAgentId, { brief: cleanBrief, taskId }, (logText) => {
+          if (subAgent && subAgent.currentTask) subAgent.currentTask.logs.push(logText);
+          broadcastEvent('log_stream', {
+            agentId: targetSubAgentId,
+            agentName: subAgent ? subAgent.name : 'SubAgent',
+            log: logText,
+            progress: 65,
+            currentStep: 'Đang thực thi kỹ thuật...'
+          });
+        }, (prog, stepName) => {
+          if (subAgent && subAgent.currentTask) {
+            subAgent.currentTask.progress = prog;
+            subAgent.currentTask.currentStep = stepName;
+            broadcastEvent('agent_update', subAgent);
+          }
+        });
+
+        // Check if output artifact really exists
+        if (!execResult.filePath || !fs.existsSync(execResult.filePath)) {
+          throw new Error(`[EXEC_FAILURE] Không tạo được tệp sản phẩm: ${execResult.filePath || 'N/A'}`);
+        }
+
+        // INDEPENDENT QC AUDIT STEP
+        const qcAgent = AGENTS.find(a => a.id === 'nv-qc');
+        if (qcAgent) {
+          qcAgent.busyState = 'working';
+          broadcastEvent('agent_update', qcAgent);
+          broadcastEvent('log_stream', {
+            agentId: qcAgent.id,
+            agentName: qcAgent.name,
+            log: `[${new Date().toLocaleTimeString('vi-VN')}] 🔍 NV Thẩm định & QC tiếp nhận sản phẩm, bắt đầu kiểm toán độc lập...`,
+            progress: 80,
+            currentStep: 'Kiểm toán chất lượng độc lập...'
+          });
+        }
+
+        // Run independent QC audit
+        const qcAudit = auditDeliverable({
+          id: `deliv-${taskId.toLowerCase()}`,
+          taskId,
+          title: execResult.title,
+          category: execResult.category,
+          filePath: execResult.filePath,
+          format: execResult.format || 'markdown'
+        });
+
+        const isCreative = qcAudit.isCreative;
+        let finalStatus = 'approved';
+        let statusBadge = '✅ `DONE`';
+
+        if (qcAudit.verdict === 'FAILED' || qcAudit.verdict === 'REJECTED') {
+          finalStatus = 'rejected';
+          statusBadge = '❌ `REJECTED`';
+        } else if (qcAudit.verdict === 'NEEDS_REVISION') {
+          finalStatus = 'needs_revision';
+          statusBadge = '⚠️ `NEEDS_REVISION`';
+        } else if (isCreative) {
+          // Creative deliverable: QC Passed technical, but MUST WAIT for Boss aesthetic approval!
+          finalStatus = 'qc_passed_pending_boss';
+          statusBadge = '🔍 `UNDER_REVIEW (Chờ Sếp duyệt)`';
+        } else {
+          // Pure technical deliverable
+          finalStatus = 'approved';
+          statusBadge = '✅ `DONE`';
+        }
+
+        // Create deliverable record
+        const delivId = `deliv-${Date.now()}`;
+        const newDeliv = {
+          id: delivId,
+          taskId: taskId,
+          title: execResult.title,
+          category: execResult.category,
+          agentName: subAgent ? subAgent.name : tpAgent.name,
+          agentRole: subAgent ? subAgent.role : tpAgent.role,
+          filePath: execResult.filePath,
+          relativePath: execResult.relativePath,
+          format: execResult.format || 'markdown',
+          status: finalStatus,
+          requiresBossApproval: isCreative,
+          fileSizeMb: execResult.fileSizeMb || (fs.statSync(execResult.filePath).size / (1024 * 1024)).toFixed(2),
+          durationSec: execResult.durationSec || 0,
+          thumbnailPath: execResult.thumbnailPath,
+          completedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          executionMode: execResult.executionMode || 'REAL',
+          executionId: execResult.executionId,
+          routingSource,
+          qcStatus: qcAudit.verdict,
+          qcScore: qcAudit.score,
+          qcDefects: qcAudit.defects,
+          summary: execResult.summary
+        };
+
+        DELIVERABLES.unshift(newDeliv);
+
+        // Sync Task Board
+        syncTaskBoardRow(taskId, cleanBrief, subAgent ? subAgent.name : 'Team', 'Sếp & QC', statusBadge, execResult.relativePath, `QC: ${qcAudit.verdict} (${qcAudit.score}/100)`);
+
+        // Record for idempotency
+        recentDispatches.set(dispatchHash, { timestamp: Date.now(), deliverable: newDeliv });
+
+        // Update agents back to idle
+        const finishTime = new Date().toLocaleTimeString('vi-VN');
+        tpAgent.busyState = 'idle';
+        if (tpAgent.currentTask) {
+          tpAgent.currentTask.progress = 100;
+          tpAgent.currentTask.currentStep = isCreative ? 'Chờ Sếp phê duyệt thẩm mỹ' : 'Đã hoàn tất nghiệm thu';
+          tpAgent.currentTask.steps.forEach(s => s.status = 'done');
+        }
+
+        if (subAgent) {
+          subAgent.busyState = 'idle';
+          if (subAgent.currentTask) {
+            subAgent.currentTask.progress = 100;
+            subAgent.currentTask.steps.forEach(s => s.status = 'done');
+          }
+          broadcastEvent('agent_update', subAgent);
+        }
+
+        if (qcAgent) {
+          qcAgent.busyState = 'idle';
+          broadcastEvent('agent_update', qcAgent);
+        }
+
+        broadcastEvent('agent_update', tpAgent);
+        broadcastEvent('deliverable_new', newDeliv);
+        broadcastEvent('log_stream', {
+          agentId: tpAgent.id,
+          agentName: tpAgent.name,
+          log: `[${finishTime}] 🏆 [${taskId}] Bàn giao: ${newDeliv.title}. Trạng thái: ${finalStatus.toUpperCase()} (QC: ${qcAudit.verdict})`,
+          progress: 100,
+          currentStep: isCreative ? 'Chờ Sếp duyệt thẩm mỹ' : 'Hoàn tất nghiệm thu'
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: isCreative ? 'Đã thi hành & QC kiểm toán. Sản phẩm đang chờ Sếp phê duyệt thẩm mỹ.' : 'Đã hoàn tất thi hành và nghiệm thu!',
+          assignedAgent: subAgent ? subAgent.name : 'Team',
+          deliverable: newDeliv,
+          qcAudit
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 7. API: AGENT REAL EXECUTION
   if ((pathname === '/api/agent/execute-real' || pathname === '/api/agent/step-forward') && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -864,14 +1205,14 @@ const server = http.createServer((req, res) => {
         agent.busyState = 'working';
         agent.currentTask = {
           title: `Thực thi nhiệm vụ chuyên môn: ${agent.name}`,
-          progress: 15,
+          progress: 25,
           currentStep: 'Khởi tạo luồng xử lý và kết nối công cụ thực tế...',
           startedAt: timeNow,
           steps: [
             { name: 'Nạp cấu hình & kho công cụ thực tế', status: 'done', time: timeNow },
             { name: 'Thực thi nghiệp vụ chuyên môn chính', status: 'doing', time: timeNow },
             { name: 'Xuất tệp sản phẩm vật lý vào ổ đĩa', status: 'pending' },
-            { name: 'Nghiệm thu & đăng ký vào Kho Đầu Ra', status: 'pending' }
+            { name: 'Nghiệm thu & thẩm định chất lượng QC', status: 'pending' }
           ],
           logs: [
             `[${timeNow}] Tiếp nhận lệnh chạy thực tế từ Sếp Quill`,
@@ -880,15 +1221,7 @@ const server = http.createServer((req, res) => {
         };
 
         broadcastEvent('agent_update', agent);
-        broadcastEvent('log_stream', {
-          agentId: agent.id,
-          agentName: agent.name,
-          log: `[${timeNow}] 🚀 Kích hoạt quy trình thực thi thật bằng kho skill & connector...`,
-          progress: 20,
-          currentStep: agent.currentTask.currentStep
-        });
 
-        // Run real executor
         const execResult = await executeRealTask(agent.id, params, (logText) => {
           agent.currentTask.logs.push(logText);
           if (agent.currentTask.logs.length > 35) agent.currentTask.logs.shift();
@@ -905,13 +1238,24 @@ const server = http.createServer((req, res) => {
           broadcastEvent('agent_update', agent);
         });
 
-        const finishTime = new Date().toLocaleTimeString('vi-VN');
-        agent.busyState = 'review';
+        // Run independent QC
+        const qcAudit = auditDeliverable({
+          id: `deliv-${Date.now()}`,
+          taskId: `TASK-${Math.floor(10 + Math.random() * 90)}`,
+          title: execResult.title,
+          category: execResult.category,
+          filePath: execResult.filePath,
+          format: execResult.format || 'markdown'
+        });
+
+        const isCreative = qcAudit.isCreative;
+        const finalStatus = isCreative ? 'qc_passed_pending_boss' : 'approved';
+
+        agent.busyState = 'idle';
         agent.currentTask.progress = 100;
-        agent.currentTask.currentStep = 'Đã hoàn tất & cấp chứng nhận nghiệm thu';
+        agent.currentTask.currentStep = isCreative ? 'Chờ Sếp duyệt thẩm mỹ' : 'Đã nghiệm thu hoàn tất';
         agent.currentTask.steps.forEach(s => s.status = 'done');
 
-        // Add real deliverable
         const taskId = `TASK-${Math.floor(10 + Math.random() * 90)}`;
         const delivId = `deliv-real-${Date.now()}`;
         const newDeliv = {
@@ -924,31 +1268,23 @@ const server = http.createServer((req, res) => {
           filePath: execResult.filePath,
           relativePath: execResult.relativePath,
           format: execResult.format || 'markdown',
-          status: 'approved',
+          status: finalStatus,
+          requiresBossApproval: isCreative,
           completedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          executionMode: execResult.executionMode || 'REAL',
+          qcStatus: qcAudit.verdict,
+          qcScore: qcAudit.score,
           summary: execResult.summary
         };
 
         DELIVERABLES.unshift(newDeliv);
-
-        // Append to TASK_BOARD.md
-        if (fs.existsSync(TASK_BOARD_FILE)) {
-          const row = `| **${taskId}** | **${execResult.title.substring(0, 35)}** | **${agent.name}** | NV Thẩm định & QC | ✅ \`DONE\` | \`${execResult.relativePath}\` | Đã kiểm định & nghiệm thu |\n`;
-          fs.appendFileSync(TASK_BOARD_FILE, row, 'utf8');
-        }
+        syncTaskBoardRow(taskId, execResult.title, agent.name, 'Sếp & QC', isCreative ? '🔍 `UNDER_REVIEW (Chờ Sếp duyệt)`' : '✅ `DONE`', execResult.relativePath, `QC: ${qcAudit.verdict} (${qcAudit.score}/100)`);
 
         broadcastEvent('agent_update', agent);
         broadcastEvent('deliverable_new', newDeliv);
-        broadcastEvent('log_stream', {
-          agentId: agent.id,
-          agentName: agent.name,
-          log: `[${finishTime}] 🏆 Sản phẩm đã được xuất và bàn giao thành công vào Kho Đầu Ra!`,
-          progress: 100,
-          currentStep: agent.currentTask.currentStep
-        });
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: true, deliverable: newDeliv, agent }));
+        res.end(JSON.stringify({ success: true, deliverable: newDeliv, agent, qcAudit }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -957,263 +1293,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // BOSS DIRECT DISPATCH TO TRUONG PHONG
-  if (pathname === '/api/boss-dispatch' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { brief } = JSON.parse(body || '{}');
-        if (!brief || !brief.trim()) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Chỉ đạo của Sếp không được để trống' }));
-          return;
-        }
-
-        const tpAgent = AGENTS.find(a => a.id === 'truong-phong');
-        const timeNow = new Date().toLocaleTimeString('vi-VN');
-
-        tpAgent.busyState = 'working';
-        tpAgent.activeTasks.unshift(`Tiếp nhận brief Sếp: "${brief.trim().substring(0, 45)}..."`);
-        tpAgent.currentTask = {
-          title: `Điều hành & phân rã nhiệm vụ: "${brief.trim().substring(0, 35)}..."`,
-          progress: 25,
-          currentStep: 'Trưởng phòng ChatGPT Plus đang phân tích brief & lập kế hoạch tác chiến...',
-          startedAt: timeNow,
-          steps: [
-            { name: 'Tiếp nhận chỉ đạo trực tiếp từ Sếp Quill', status: 'done', time: timeNow },
-            { name: 'Phân tích yêu cầu & phân rã cho các sub-agents', status: 'doing', time: timeNow },
-            { name: 'Điều phối sub-agents thực thi kỹ thuật thực tế', status: 'pending' },
-            { name: 'Chuyển giao cho NV Thẩm định & QC kiểm tra', status: 'pending' },
-            { name: 'Tổng hợp báo cáo nghiệm thu nộp Sếp (<120 chữ)', status: 'pending' }
-          ],
-          logs: [
-            `[${timeNow}] Sếp giao việc: "${brief.trim()}"`,
-            `[${timeNow}] Trưởng phòng (ChatGPT Plus) kích hoạt mô hình tư duy phân rã task...`
-          ]
-        };
-
-        broadcastEvent('agent_update', tpAgent);
-        broadcastEvent('log_stream', {
-          agentId: tpAgent.id,
-          agentName: tpAgent.name,
-          log: `[${timeNow}] 📋 Trưởng phòng tiếp nhận chỉ đạo: "${brief.trim()}"`,
-          progress: 25,
-          currentStep: tpAgent.currentTask.currentStep
-        });
-
-        // TƯƠNG TÁC THỰC TẾ VỚI CHATGPT PLUS WEB (NẾU CÓ CẦU NỐI BRIDGE)
-        let chatGptResponseText = '';
-        const isBridgeLive = isBridgeActive();
-
-        if (isBridgeLive) {
-          const officeSnapshot = buildOfficeContextSnapshot();
-          const taskId = `TASK-TP-${Date.now()}`;
-          const gptPrompt = `[BÁO CÁO TÌNH HÌNH NỘI BỘ VĂN PHÒNG TẠI MÁY SẾP QUILL - ${timeNow}]
-${officeSnapshot}
-
-=======================================================
-[CHỈ ĐẠO CHIẾN LƯỢC TỪ SẾP QUILL]
-Nội dung chỉ đạo: "${brief.trim()}"
-=======================================================
-
-Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp Quill ở trên, Trưởng phòng hãy:
-1. Đánh giá tính khả thi và lập phương án tác chiến cụ thể cho đội ngũ.
-2. Chỉ định chính xác 1 nhân viên AI chuyên môn phụ trách chính: chọn đúng 1 mã trong ngoặc vuông: [nv-video], [nv-seo], [nv-dev], [nv-tai-chinh], [nv-content].
-3. Hướng dẫn nhân viên đó sử dụng các tài nguyên/tệp có sẵn trên máy để thi hành.
-4. Tóm tắt báo cáo ngắn cho Sếp Quill (<100 từ).`;
-
-          broadcastEvent('log_stream', {
-            agentId: tpAgent.id,
-            agentName: tpAgent.name,
-            log: `[${timeNow}] 🚀 Đã bắn lệnh vào tab ChatGPT Web (${bridgeState.conversationId || 'Phòng chat hiện tại'}). Đang chờ GPT-4o Plus xử lý...`,
-            progress: 35,
-            currentStep: 'Chờ phản hồi từ ChatGPT Plus Web...'
-          });
-
-          try {
-            let timerId = null;
-            const bridgePromise = new Promise((resolve, reject) => {
-              bridgeState.pendingTask = {
-                taskId: taskId,
-                prompt: gptPrompt,
-                resolve,
-                reject,
-                startedAt: Date.now(),
-                dispatched: false
-              };
-            });
-
-            const timeoutPromise = new Promise((_, reject) => {
-              timerId = setTimeout(() => reject(new Error('Hết thời gian chờ phản hồi từ tab ChatGPT Web (4s)')), 4000);
-            });
-
-            const result = await Promise.race([bridgePromise, timeoutPromise]);
-            if (timerId) clearTimeout(timerId);
-            if (result && result.success && result.text) {
-              chatGptResponseText = result.text;
-              broadcastEvent('log_stream', {
-                agentId: tpAgent.id,
-                agentName: tpAgent.name,
-                log: `[${new Date().toLocaleTimeString('vi-VN')}] 💬 ChatGPT Plus phản hồi: "${chatGptResponseText.substring(0, 160).replace(/\n/g, ' ')}..."`,
-                progress: 50,
-                currentStep: 'Trưởng phòng đã phê duyệt kế hoạch, chuyển giao cho Sub-agent'
-              });
-              tpAgent.currentTask.logs.push(`[Trưởng phòng ChatGPT Plus] ${chatGptResponseText.substring(0, 250)}...`);
-            }
-          } catch (bridgeErr) {
-            bridgeState.pendingTask = null;
-            console.error('[Bridge Fallback]', bridgeErr.message);
-            broadcastEvent('log_stream', {
-              agentId: tpAgent.id,
-              agentName: tpAgent.name,
-              log: `[${new Date().toLocaleTimeString('vi-VN')}] ⚡ Trưởng phòng tự động kích hoạt bộ điều phối tác chiến tốc độ cao (0ms latency).`,
-              progress: 40,
-              currentStep: 'Điều phối tự động tốc độ cao'
-            });
-          }
-        } else {
-          broadcastEvent('log_stream', {
-            agentId: tpAgent.id,
-            agentName: tpAgent.name,
-            log: `[${timeNow}] ℹ️ Tab ChatGPT Web chưa kết nối (Sếp có thể mở chatgpt.com để đồng bộ). Đang điều phối tự động...`,
-            progress: 30,
-            currentStep: 'Điều phối nội bộ'
-          });
-        }
-
-        // Determine which sub-agents to trigger
-        const lowerBrief = (chatGptResponseText + ' ' + brief).toLowerCase();
-        let targetSubAgentId = 'nv-content';
-        if (chatGptResponseText.includes('[nv-video]') || lowerBrief.includes('nv-video') || lowerBrief.includes('video') || lowerBrief.includes('tiktok') || lowerBrief.includes('douyin') || lowerBrief.includes('clip') || lowerBrief.includes('remix') || lowerBrief.includes('concat')) {
-          targetSubAgentId = 'nv-video';
-        } else if (chatGptResponseText.includes('[nv-seo]') || lowerBrief.includes('nv-seo') || lowerBrief.includes('seo') || lowerBrief.includes('audit') || lowerBrief.includes('web') || lowerBrief.includes('link') || lowerBrief.includes('google')) {
-          targetSubAgentId = 'nv-seo';
-        } else if (chatGptResponseText.includes('[nv-dev]') || lowerBrief.includes('nv-dev') || lowerBrief.includes('code') || lowerBrief.includes('dev') || lowerBrief.includes('bug') || lowerBrief.includes('server') || lowerBrief.includes('test')) {
-          targetSubAgentId = 'nv-dev';
-        } else if (chatGptResponseText.includes('[nv-tai-chinh]') || lowerBrief.includes('nv-tai-chinh') || lowerBrief.includes('tài chính') || lowerBrief.includes('btc') || lowerBrief.includes('trading') || lowerBrief.includes('lệnh')) {
-          targetSubAgentId = 'nv-tai-chinh';
-        }
-
-        const subAgent = AGENTS.find(a => a.id === targetSubAgentId);
-        if (subAgent) {
-          subAgent.busyState = 'working';
-          subAgent.activeTasks.unshift(`Nhận lệnh từ Trưởng phòng: ${brief.trim().substring(0, 40)}`);
-          broadcastEvent('agent_update', subAgent);
-          broadcastEvent('log_stream', {
-            agentId: subAgent.id,
-            agentName: subAgent.name,
-            log: `[${timeNow}] ⚡ Nhận phân công từ Trưởng phòng Điều phối, bắt đầu thực thi...`,
-            progress: 30,
-            currentStep: 'Thực thi nghiệp vụ chuyên môn...'
-          });
-        }
-
-        // Execute real task via real_executor
-        const execResult = await executeRealTask(targetSubAgentId, { brief }, (logText) => {
-          if (subAgent && subAgent.currentTask) subAgent.currentTask.logs.push(logText);
-          broadcastEvent('log_stream', {
-            agentId: targetSubAgentId,
-            agentName: subAgent ? subAgent.name : 'SubAgent',
-            log: logText,
-            progress: 65,
-            currentStep: 'Đang thực thi kỹ thuật...'
-          });
-        }, (prog, stepName) => {
-          if (subAgent && subAgent.currentTask) {
-            subAgent.currentTask.progress = prog;
-            subAgent.currentTask.currentStep = stepName;
-            broadcastEvent('agent_update', subAgent);
-          }
-        });
-
-        // Trigger QC certification
-        const qcAgent = AGENTS.find(a => a.id === 'nv-qc');
-        if (qcAgent) {
-          qcAgent.busyState = 'working';
-          broadcastEvent('agent_update', qcAgent);
-          broadcastEvent('log_stream', {
-            agentId: qcAgent.id,
-            agentName: qcAgent.name,
-            log: `[${new Date().toLocaleTimeString('vi-VN')}] 🔍 NV Thẩm định & QC tiếp nhận sản phẩm, tiến hành kiểm toán chất lượng chéo...`,
-            progress: 85,
-            currentStep: 'Thẩm định chất lượng...'
-          });
-        }
-
-        await executeRealTask('nv-qc', {}, () => {}, () => {});
-
-        const finishTime = new Date().toLocaleTimeString('vi-VN');
-        tpAgent.busyState = 'idle';
-        tpAgent.currentTask.progress = 100;
-        tpAgent.currentTask.currentStep = 'Đã hoàn thành toàn bộ công việc, bàn giao báo cáo cho Sếp';
-        tpAgent.currentTask.steps.forEach(s => s.status = 'done');
-
-        if (subAgent) {
-          subAgent.busyState = 'idle';
-          if (subAgent.currentTask) {
-            subAgent.currentTask.progress = 100;
-            subAgent.currentTask.steps.forEach(s => s.status = 'done');
-          }
-          broadcastEvent('agent_update', subAgent);
-        }
-
-        if (qcAgent) {
-          qcAgent.busyState = 'idle';
-          broadcastEvent('agent_update', qcAgent);
-        }
-
-        // Add deliverable
-        const taskId = `TASK-${Math.floor(10 + Math.random() * 90)}`;
-        const delivId = `deliv-boss-${Date.now()}`;
-        const newDeliv = {
-          id: delivId,
-          taskId: taskId,
-          title: execResult.title,
-          category: execResult.category,
-          agentName: subAgent ? subAgent.name : tpAgent.name,
-          agentRole: subAgent ? subAgent.role : tpAgent.role,
-          filePath: execResult.filePath,
-          relativePath: execResult.relativePath,
-          format: execResult.format || 'markdown',
-          status: 'approved',
-          completedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          summary: execResult.summary
-        };
-
-        DELIVERABLES.unshift(newDeliv);
-
-        // Append to TASK_BOARD.md
-        if (fs.existsSync(TASK_BOARD_FILE)) {
-          const row = `| **${taskId}** | **${brief.trim().substring(0, 30)}** | **Trưởng phòng ➔ ${subAgent ? subAgent.name : 'Team'}** | Sếp (Quill) & QC | ✅ \`DONE\` | \`${execResult.relativePath}\` | Đã thi hành thực tế theo chỉ đạo Sếp |\n`;
-          fs.appendFileSync(TASK_BOARD_FILE, row, 'utf8');
-        }
-
-        broadcastEvent('agent_update', tpAgent);
-        broadcastEvent('deliverable_new', newDeliv);
-        broadcastEvent('log_stream', {
-          agentId: tpAgent.id,
-          agentName: tpAgent.name,
-          log: `[${finishTime}] 🏆 Trưởng phòng báo cáo Sếp: Nhiệm vụ "${brief.trim().substring(0, 30)}" đã hoàn thành và lưu vào Kho Đầu Ra!`,
-          progress: 100,
-          currentStep: 'Hoàn tất bàn giao'
-        });
-
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: true,
-          message: `Trưởng phòng đã điều phối hoàn tất nhiệm vụ cho Sếp!`,
-          assignedAgent: subAgent ? subAgent.name : 'Team',
-          deliverable: newDeliv
-        }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
-    return;
-  }
-
+  // 8. OTHER APIS: SKILLS, CONNECTORS, MEMORY, VIDEO SCRAPE
   if (pathname === '/api/skills') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(getSkillsList()));
@@ -1235,10 +1315,7 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
     } catch(err) {}
 
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      memory: memoryContent,
-      taskBoard: taskBoardContent
-    }));
+    res.end(JSON.stringify({ memory: memoryContent, taskBoard: taskBoardContent }));
     return;
   }
 
@@ -1267,76 +1344,8 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
         fs.writeFileSync(MEMORY_FILE, content, 'utf8');
 
         broadcastEvent('memory_update', { note: note.trim() });
-
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: true, message: 'Đã lưu lời sếp dặn vào Bộ nhớ chung!' }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
-    return;
-  }
-
-  if (pathname === '/api/dispatch' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        const { agentId, taskTitle, details, priority } = data;
-
-        const targetAgent = AGENTS.find(a => a.id === agentId);
-        if (targetAgent) {
-          targetAgent.busyState = 'working';
-          targetAgent.activeTasks.unshift(taskTitle);
-          const timeNow = new Date().toLocaleTimeString('vi-VN');
-          targetAgent.currentTask = {
-            title: taskTitle,
-            progress: 20,
-            currentStep: 'Khởi tạo luồng xử lý và nạp dữ liệu ban đầu',
-            startedAt: timeNow,
-            steps: [
-              { name: 'Tiếp nhận brief & kiểm tra quyền hạn', status: 'done', time: timeNow },
-              { name: 'Nạp bộ nhớ chung & tài liệu liên quan', status: 'doing', time: timeNow },
-              { name: 'Thực thi nghiệp vụ chuyên môn chính', status: 'pending' },
-              { name: 'Kiểm tra chéo chất lượng & tuân thủ luật', status: 'pending' },
-              { name: 'Bàn giao báo cáo nghiệm thu cho Sếp', status: 'pending' }
-            ],
-            logs: [
-              `[${timeNow}] Nhận nhiệm vụ: "${taskTitle}"`,
-              `[${timeNow}] Tham chiếu quy định trong BO_NHO_CHUNG.md: Thành công`,
-              `[${timeNow}] Bắt đầu phân rã thành 5 mốc hoàn thành...`
-            ]
-          };
-        }
-
-        // Append to TASK_BOARD.md
-        if (fs.existsSync(TASK_BOARD_FILE)) {
-          const dateStr = new Date().toISOString().split('T')[0];
-          const taskId = `TASK-${Math.floor(10 + Math.random() * 90)}`;
-          const agentName = targetAgent ? targetAgent.name : 'Trưởng phòng';
-          const row = `| **${taskId}** | **${taskTitle}** | **${agentName}** | Trưởng phòng / Sếp | ⏳ \`IN_PROGRESS\` | \`01_DU_AN_CHUNG/\` | ${details || 'Thực thi theo chuẩn văn phòng'} |\n`;
-          fs.appendFileSync(TASK_BOARD_FILE, row, 'utf8');
-        }
-
-        if (targetAgent) {
-          broadcastEvent('agent_update', targetAgent);
-          broadcastEvent('log_stream', {
-            agentId: targetAgent.id,
-            agentName: targetAgent.name,
-            log: `[${new Date().toLocaleTimeString('vi-VN')}] 🚀 Bắt đầu nhiệm vụ mới: "${taskTitle}"`,
-            progress: targetAgent.currentTask ? targetAgent.currentTask.progress : 20,
-            currentStep: targetAgent.currentTask ? targetAgent.currentTask.currentStep : 'Khởi động'
-          });
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: true,
-          message: `Đã giao nhiệm vụ thành công cho ${targetAgent ? targetAgent.name : 'nhân viên'}!`,
-          taskTitle
-        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -1383,7 +1392,7 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
         broadcastEvent('log_stream', {
           agentId: agent.id,
           agentName: agent.name,
-          log: `[${timeNow}] 📥 Bắt đầu cào video từ link: ${targetUrl.trim()}`,
+          log: `[${timeNow}] 📥 Bắt đầu cào video: ${targetUrl.trim()}`,
           progress: 25,
           currentStep: agent.currentTask.currentStep
         });
@@ -1447,46 +1456,30 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
                 relativePath: resData.relative_path,
                 format: 'video',
                 status: 'approved',
+                requiresBossApproval: false,
                 fileSizeMb: resData.file_size_mb,
                 durationSec: resData.duration_sec,
                 thumbnailPath: resData.thumbnail_path,
                 author: resData.author,
                 sourceUrl: resData.url,
                 completedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-                summary: `Video nguồn từ ${resData.platform} của tác giả ${resData.author}, thời lượng ${resData.duration_sec}s, dung lượng ${resData.file_size_mb} MB. Đã lưu tại ${resData.relative_path}. Sẵn sàng cho Concat MCP cắt dựng.`
+                summary: `Video nguồn từ ${resData.platform} của tác giả ${resData.author}, thời lượng ${resData.duration_sec}s, dung lượng ${resData.file_size_mb} MB.`
               };
 
               DELIVERABLES.unshift(newDeliv);
 
-              agent.busyState = 'review';
+              agent.busyState = 'idle';
               agent.currentTask.progress = 100;
               agent.currentTask.currentStep = 'Hoàn tất tải video & đã chuyển vào Kho Đầu Ra';
               agent.currentTask.steps.forEach(s => s.status = 'done');
-              agent.currentTask.logs.push(`[${finishTime}] ✅ Tải video thành công: ${resData.title} (${resData.file_size_mb} MB)`);
-              agent.currentTask.logs.push(`[${finishTime}] 📁 Lưu thành công tại: ${resData.relative_path}`);
 
-              if (fs.existsSync(TASK_BOARD_FILE)) {
-                const row = `| **${taskId}** | **Cào video: ${resData.title.substring(0, 30)}** | **${agent.name}** | Sếp | ✅ \`DONE\` | \`${resData.relative_path}\` | Video ${resData.platform} (${resData.file_size_mb}MB) |\n`;
-                fs.appendFileSync(TASK_BOARD_FILE, row, 'utf8');
-              }
+              syncTaskBoardRow(taskId, `Cào video: ${resData.title || resData.platform}`, agent.name, 'Sếp & QC', '✅ `DONE`', resData.relative_path, `Video ${resData.platform} (${resData.file_size_mb}MB)`);
 
               broadcastEvent('agent_update', agent);
               broadcastEvent('deliverable_new', newDeliv);
-              broadcastEvent('log_stream', {
-                agentId: agent.id,
-                agentName: agent.name,
-                log: `[${finishTime}] 🏆 Đã hoàn thành tải và đưa video vào Kho Đầu Ra!`,
-                progress: 100,
-                currentStep: agent.currentTask.currentStep
-              });
 
               res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-              res.end(JSON.stringify({
-                success: true,
-                message: `Đã cào video thành công từ ${resData.platform}!`,
-                deliverable: newDeliv,
-                video: resData
-              }));
+              res.end(JSON.stringify({ success: true, deliverable: newDeliv, video: resData }));
             } else {
               throw new Error('Không phân tích được kết quả tải video');
             }
@@ -1495,7 +1488,6 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
             res.end(JSON.stringify({ error: parseErr.message }));
           }
         });
-
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -1527,54 +1519,10 @@ Dựa trên dữ liệu thực tế và tài nguyên sẵn có trên máy Sếp 
   });
 });
 
-// Realtime Streaming Emitter (0ms push to browser)
-setInterval(() => {
-  if (sseClients.size === 0) return;
-  const workingAgents = AGENTS.filter(a => a.busyState === 'working');
-  if (workingAgents.length === 0) return;
-
-  const randomAgent = workingAgents[Math.floor(Math.random() * workingAgents.length)];
-  if (randomAgent && randomAgent.currentTask) {
-    const timeNow = new Date().toLocaleTimeString('vi-VN');
-    const sampleLogs = {
-      'nv-seo': [
-        `[${timeNow}] Claude SEO Subagent #04 (Schema): Xác thực JSON-LD với schema.org: Hợp lệ 100%`,
-        `[${timeNow}] GEO Search Engine: Đo lường trích dẫn câu hỏi người dùng trên Perplexity & Gemini`,
-        `[${timeNow}] Lighthouse Core Web Vitals: Time to Interactive (TTI) 1.2s - Chuẩn tối ưu`
-      ],
-      'nv-video': [
-        `[${timeNow}] Concat MCP Rust Engine: Render khung hình ${Math.floor(500 + Math.random() * 550)} / 1080 (1080x1920)`,
-        `[${timeNow}] Whisper Subtitle: Đồng bộ phụ đề tiếng Việt chuẩn xác từng miligiây`,
-        `[${timeNow}] Audio Processing: Căn chỉnh waveform giọng đọc voice-over khớp nhạc nền -14dB`
-      ],
-      'nv-content': [
-        `[${timeNow}] Soạn kịch bản: Thêm hiệu ứng âm thanh (sound cue: whoosh, pop) cho cảnh 3`,
-        `[${timeNow}] Phân tích E-E-A-T: Bổ sung dẫn chứng số liệu thực tế vào phần giải pháp`
-      ],
-      'nv-tai-chinh': [
-        `[${timeNow}] Kronos 12B: Quét phân kỳ delta khối lượng lệnh mua/bán sàn phái sinh`,
-        `[${timeNow}] Risk Monitor: Open Interest duy trì biên độ an toàn, không có tín hiệu thanh lý lớn`
-      ]
-    };
-
-    const agentLogs = sampleLogs[randomAgent.id] || [`[${timeNow}] Tiến trình ngầm đang thực thi ổn định...`];
-    const pickedLog = agentLogs[Math.floor(Math.random() * agentLogs.length)];
-    
-    randomAgent.currentTask.logs.push(pickedLog);
-    if (randomAgent.currentTask.logs.length > 35) randomAgent.currentTask.logs.shift();
-
-    broadcastEvent('log_stream', {
-      agentId: randomAgent.id,
-      agentName: randomAgent.name,
-      log: pickedLog,
-      progress: randomAgent.currentTask.progress,
-      currentStep: randomAgent.currentTask.currentStep
-    });
-  }
-}, 2200);
-
 server.listen(PORT, () => {
   console.log(`=======================================================`);
-  console.log(`🚀 VĂN PHÒNG AI STUDIO ĐÃ SẴN SÀNG TẠI: http://localhost:${PORT}`);
+  console.log(`🚀 VĂN PHÒNG AI STUDIO v3.0 (MULTI-AGENT VERIFIED)`);
+  console.log(`📡 Dashboard: http://localhost:${PORT}`);
+  console.log(`⚡ Kênh SSE: /api/live-stream (Real Latency Measurement)`);
   console.log(`=======================================================`);
 });

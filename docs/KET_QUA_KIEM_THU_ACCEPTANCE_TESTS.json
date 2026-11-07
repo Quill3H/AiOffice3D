@@ -1,0 +1,105 @@
+[
+  {
+    "testName": "Test 1: Agent thực thi thành công, tạo artifact và QC chấp nhận",
+    "passed": true,
+    "details": "Tệp: 05_BAO_CAO_VA_KIEM_THU/BAO_CAO_KIEM_THU_HE_THONG_DEV_OPS.md, Status: approved, QC: PASSED",
+    "evidence": {
+      "executionMode": "REAL",
+      "qcScore": 100
+    },
+    "timestamp": "2026-11-07T22:09:42.087Z"
+  },
+  {
+    "testName": "Test 2: Artifact không tồn tại trên ổ đĩa -> QC PHẢI BÁO FAILED",
+    "passed": true,
+    "details": "Verdict: FAILED, Score: 0, Defects: 1",
+    "evidence": {
+      "defects": [
+        "Tệp sản phẩm không tồn tại trên ổ đĩa: /tmp/non_existent_artifact_xyz_12345.md"
+      ]
+    },
+    "timestamp": "2026-11-07T22:09:42.089Z"
+  },
+  {
+    "testName": "Test 3: Lỗi thực thi không được tự động chuyển DONE",
+    "passed": true,
+    "details": "Ngoại lệ bị chặn thành công, không tạo deliverable giả mạo",
+    "evidence": {},
+    "timestamp": "2026-11-07T22:09:42.108Z"
+  },
+  {
+    "testName": "Test 4: ChatGPT Web ngắt kết nối -> Fallback minh bạch RULE_ENGINE_FALLBACK",
+    "passed": true,
+    "details": "Routing Source: RULE_ENGINE_FALLBACK, Quyết định ghi nhận trung thực",
+    "evidence": {
+      "routingSource": "RULE_ENGINE_FALLBACK",
+      "assignedAgent": "NV SEO & AI Search"
+    },
+    "timestamp": "2026-11-07T22:09:42.628Z"
+  },
+  {
+    "testName": "Test 5: Video Kỷ Luật Thép bị QC từ chối -> Chuyển trạng thái NEEDS_REVISION",
+    "passed": true,
+    "details": "Verdict: NEEDS_REVISION, Điểm: 60/100, Phát hiện: Âm thanh nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai, không có giai điệu âm nhạc.",
+    "evidence": {
+      "defects": [
+        "Âm thanh nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai, không có giai điệu âm nhạc.",
+        "Giọng đọc lồng tiếng macOS say -v Linh là TTS thô sơ, phát âm cơ học, nhịp điệu chưa đạt chuẩn viral short.",
+        "Đánh giá thẩm mỹ không đạt: Nhạc nền và giọng đọc không đáp ứng kỳ vọng của Sếp. Cần thu âm/mix lại nhạc nền thực tế."
+      ]
+    },
+    "timestamp": "2026-11-07T22:09:42.812Z"
+  },
+  {
+    "testName": "Test 6: Hai lệnh trùng nhau -> Cơ chế Idempotency phát hiện và chặn chạy lặp",
+    "passed": true,
+    "details": "Lệnh 2 deduplicated: true",
+    "evidence": {
+      "message": "Lệnh trùng lặp đã được phát hiện và bỏ qua (Idempotent)"
+    },
+    "timestamp": "2026-11-07T22:09:43.238Z"
+  },
+  {
+    "testName": "Test 7: Luồng Sếp phê duyệt thẩm mỹ độc lập cho sản phẩm sáng tạo",
+    "passed": true,
+    "details": "Status sau khi Sếp duyệt: approved, BossApproved: true",
+    "evidence": {},
+    "timestamp": "2026-11-07T22:09:43.240Z"
+  },
+  {
+    "testName": "Test 8: Tải đồng thời 6 luồng endpoint song song -> Hệ thống mượt mà, không deadlock",
+    "passed": true,
+    "details": "Tất cả 6 requests trả lời HTTP 200 OK",
+    "evidence": {},
+    "timestamp": "2026-11-07T22:09:43.260Z"
+  },
+  {
+    "testName": "Test 9: Benchmark đo lường latency thực tế (p50, p95, p99, event-loop lag, RAM)",
+    "passed": true,
+    "details": "p50: 1ms, p95: 518ms, LoopLag: 3ms, Heap: 7MB",
+    "evidence": {
+      "latency": {
+        "p50": 1,
+        "p95": 518,
+        "p99": 605,
+        "mean": 90.5,
+        "min": 0,
+        "max": 605,
+        "samples": 32
+      },
+      "memory": {
+        "heapUsedMb": 7,
+        "heapTotalMb": 10,
+        "rssMb": 49
+      }
+    },
+    "timestamp": "2026-11-07T22:09:43.261Z"
+  },
+  {
+    "testName": "Test 10: Luồng SSE Live Stream nhận gói tin khởi tạo hợp lệ không polling",
+    "passed": true,
+    "details": "Độ trễ nhận event đầu tiên: 2ms",
+    "evidence": {},
+    "timestamp": "2026-11-07T22:09:43.263Z"
+  }
+]
