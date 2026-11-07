@@ -127,10 +127,11 @@ async function executeRealTask(agentId, params = {}, onLog = () => {}, onProgres
   // 2. NV VIDEO (CONCAT MCP & FFMPEG)
   else if (agentId === 'nv-video') {
     const briefLower = (params.brief || '').toLowerCase();
-    const isRemixRequest = briefLower.includes('kỷ luật') || briefLower.includes('remix') || briefLower.includes('viral') || briefLower.includes('hook');
+    const isTimelineOnly = (briefLower.includes('timeline') || briefLower.includes('kịch bản') || briefLower.includes('srt')) && 
+                           !briefLower.includes('render') && !briefLower.includes('xuất') && !briefLower.includes('dựng video') && !briefLower.includes('video hoàn chỉnh');
 
-    if (isRemixRequest) {
-      onLog(`[${timeNow()}] [PROCESS] Kích hoạt render_viral_video.py với FFmpeg (Audio Mastering thật)...`);
+    if (!isTimelineOnly) {
+      onLog(`[${timeNow()}] [PROCESS] Yêu cầu sản phẩm Video hoàn chỉnh. Kích hoạt render_viral_video.py với FFmpeg (Audio Mastering thật)...`);
       onProgress(30, 'Chạy kịch bản dựng video dọc 9:16 (1080x1920) với âm thanh chuẩn...');
 
       const scriptPath = path.join(__dirname, 'render_viral_video.py');

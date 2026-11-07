@@ -1,22 +1,56 @@
 // ==UserScript==
-// @name         Văn Phòng AI Studio - ChatGPT Plus Bridge
+// @name         Văn Phòng AI Studio - ChatGPT Plus Bridge (v1.2.0)
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Cầu nối tự động hóa giữa Dashboard Văn Phòng AI Studio (localhost:3333) và tab ChatGPT Web Plus
+// @version      1.2.0
+// @description  Cầu nối tự động hóa hai chiều (Handshake, Heartbeat, ACK, Watchdog) giữa Dashboard Văn Phòng AI Studio (localhost:3333) và tab ChatGPT Web Plus
 // @author       Sếp Quill & Antigravity
 // @match        https://chatgpt.com/*
+// @match        https://chat.openai.com/*
 // @grant        GM_xmlhttpRequest
 // @connect      localhost
+// @connect      127.0.0.1
 // @run-at       document-idle
 // ==/UserScript==
 
 (function () {
   'use strict';
-  console.log('[Văn Phòng AI Userscript] Đang kích hoạt cầu nối ChatGPT Plus...');
+  console.log('[Văn Phòng AI Userscript] Kích hoạt cầu nối ChatGPT Plus v1.2.0...');
 
   const BRIDGE_API_BASE = 'http://localhost:3333/api/chatgpt-bridge';
   let isExecutingTask = false;
   let statusBadge = null;
+  let activeSessionId = null;
+
+  function httpReq(method, path, data = null) {
+    return new Promise((resolve, reject) => {
+      const url = `${BRIDGE_API_BASE}${path}`;
+      if (typeof GM_xmlhttpRequest !== 'undefined') {
+        GM_xmlhttpRequest({
+          method,
+          url,
+          headers: { 'Content-Type': 'application/json' },
+          data: data ? JSON.stringify(data) : null,
+          onload: (res) => {
+            try {
+              resolve(JSON.parse(res.responseText));
+            } catch (e) {
+              resolve({ ok: true, raw: res.responseText });
+            }
+          },
+          onerror: (err) => reject(err)
+        });
+      } else {
+        fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: data ? JSON.stringify(data) : null
+        })
+          .then(r => r.json())
+          .then(resolve)
+          .catch(reject);
+      }
+    });
+  }
 
   function createFloatingBadge() {
     if (document.getElementById('van-phong-ai-badge')) return;
@@ -28,14 +62,14 @@
       bottom: 24px;
       right: 24px;
       z-index: 999999;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(245, 158, 11, 0.5);
       color: #f8fafc;
       padding: 10px 16px;
       border-radius: 16px;
       font-family: system-ui, -apple-system, sans-serif;
       font-size: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(245, 158, 11, 0.2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.25);
       backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
@@ -47,7 +81,7 @@
     statusBadge.innerHTML = `
       <div id="vpai-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #94a3b8;"></div>
       <div>
-        <div style="font-weight: 700; color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Văn Phòng AI Studio</div>
+        <div style="font-weight: 700; color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Văn Phòng AI Studio v3.0</div>
         <div id="vpai-status-text" style="color: #94a3b8; font-size: 11px;">Đang kết nối Dashboard...</div>
       </div>
     `;
@@ -67,14 +101,14 @@
 
     if (status === 'connected') {
       dot.style.background = '#10b981';
-      dot.style.boxShadow = '0 0 8px #10b981';
+      dot.style.boxShadow = '0 0 10px #10b981';
       label.style.color = '#34d399';
-      label.innerText = text || 'Đã liên kết Trưởng phòng';
+      label.innerText = text || 'Đã liên kết Trưởng phòng (Handshake OK)';
     } else if (status === 'working') {
       dot.style.background = '#f59e0b';
-      dot.style.boxShadow = '0 0 8px #f59e0b';
+      dot.style.boxShadow = '0 0 10px #f59e0b';
       label.style.color = '#fbbf24';
-      label.innerText = text || 'Đang nhận lệnh & viết bài...';
+      label.innerText = text || 'Đang xử lý & truyền thông tin...';
     } else {
       dot.style.background = '#ef4444';
       dot.style.boxShadow = 'none';
@@ -96,14 +130,15 @@
   function findPromptInput() {
     return document.querySelector('#prompt-textarea') ||
            document.querySelector('div[contenteditable="true"]') ||
+           document.querySelector('textarea[data-id="root"]') ||
            document.querySelector('textarea');
   }
 
   async function injectText(text) {
     const inputEl = findPromptInput();
     if (!inputEl) return false;
-    inputEl.focus();
 
+    inputEl.focus();
     let success = false;
     try {
       success = document.execCommand('insertText', false, text);
@@ -111,12 +146,13 @@
       success = false;
     }
 
-    if (!success) {
+    if (!success || (inputEl.textContent || inputEl.value || '').trim().length === 0) {
       if (inputEl.tagName.toLowerCase() === 'textarea') {
         inputEl.value = text;
       } else {
         inputEl.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
       }
+      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -126,7 +162,9 @@
   function findSendButton() {
     return document.querySelector('button[data-testid="send-button"]') ||
            document.querySelector('button[aria-label="Send prompt"]') ||
+           document.querySelector('button[aria-label="Send message"]') ||
            document.querySelector('button[aria-label="Gửi lời nhắc"]') ||
+           document.querySelector('button[aria-label="Gửi tin nhắn"]') ||
            document.querySelector('button[data-testid="fruitjuice-send-button"]') ||
            document.querySelector('form button[type="submit"]');
   }
@@ -134,8 +172,8 @@
   function isStopButtonVisible() {
     return !!(
       document.querySelector('button[data-testid="stop-button"]') ||
-      document.querySelector('button[aria-label="Stop generating"]') ||
-      document.querySelector('button[aria-label="Dừng tạo"]') ||
+      document.querySelector('button[aria-label*="Stop"]') ||
+      document.querySelector('button[aria-label*="Dừng"]') ||
       document.querySelector('.result-streaming')
     );
   }
@@ -152,21 +190,30 @@
   async function executeTask(task) {
     if (isExecutingTask) return;
     isExecutingTask = true;
-    updateBadge('working', 'Đang nhập chỉ đạo của Sếp...');
+
+    const correlationId = task.correlationId || `CORR-${task.taskId}`;
+
+    // Send ACK immediately
+    await httpReq('POST', '/ack', {
+      taskId: task.taskId,
+      correlationId: correlationId,
+      status: 'ACKNOWLEDGED',
+      acknowledgedAt: Date.now()
+    }).catch(() => {});
+
+    updateBadge('working', 'Đã nhận lệnh (ACK). Đang nhập chỉ đạo...');
 
     try {
-      await fetch(`${BRIDGE_API_BASE}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: task.taskId,
-          log: `[ChatGPT Tab] Đã nhận chỉ đạo Sếp, đang tự động nạp vào ô chat Trưởng phòng...`,
-          progress: 35
-        })
+      await httpReq('POST', '/log', {
+        taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'PROCESSING',
+        log: `[ChatGPT Tab] Đã nhận chỉ đạo Sếp (Correlation: ${correlationId}), đang điền vào ô chat Trưởng phòng...`,
+        progress: 35
       }).catch(() => {});
 
       const injected = await injectText(task.prompt);
-      if (!injected) throw new Error('Không thể điền prompt vào ô chat ChatGPT');
+      if (!injected) throw new Error('Không thể điền prompt vào ô chat');
 
       await new Promise(r => setTimeout(r, 600));
 
@@ -176,28 +223,20 @@
       } else {
         const inputEl = findPromptInput();
         if (inputEl) {
-          inputEl.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Enter',
-            code: 'Enter',
-            keyCode: 13,
-            which: 13,
-            bubbles: true
-          }));
+          inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
         }
       }
 
-      await fetch(`${BRIDGE_API_BASE}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: task.taskId,
-          log: `[ChatGPT Tab] Đã bấm Gửi, Trưởng phòng ChatGPT Plus đang sinh phản hồi...`,
-          progress: 50
-        })
+      await httpReq('POST', '/log', {
+        taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'PROCESSING',
+        log: `[ChatGPT Tab] Đã bấm Gửi, Trưởng phòng ChatGPT Plus đang sinh phản hồi...`,
+        progress: 50
       }).catch(() => {});
 
       let startedGenerating = false;
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 400));
         if (isStopButtonVisible()) {
           startedGenerating = true;
@@ -213,7 +252,7 @@
       const startTime = Date.now();
 
       while (Date.now() - startTime < maxWaitSeconds * 1000) {
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 1000));
         const currentText = getLatestAssistantResponse();
         const stillGenerating = isStopButtonVisible();
 
@@ -226,15 +265,13 @@
 
         lastText = currentText;
 
-        if (stillGenerating && currentText.length > 50) {
-          await fetch(`${BRIDGE_API_BASE}/log`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              taskId: task.taskId,
-              log: `[ChatGPT Tab] Trưởng phòng đang viết: "${currentText.slice(-60).replace(/\n/g, ' ')}..."`,
-              progress: 65
-            })
+        if (stillGenerating && currentText.length > 30) {
+          await httpReq('POST', '/log', {
+            taskId: task.taskId,
+            correlationId: correlationId,
+            status: 'PROCESSING',
+            log: `[ChatGPT Tab] Trưởng phòng đang viết: "${currentText.slice(-60).replace(/\n/g, ' ')}..."`,
+            progress: Math.min(85, 50 + Math.floor(currentText.length / 30))
           }).catch(() => {});
         }
 
@@ -243,62 +280,86 @@
 
       const finalText = getLatestAssistantResponse() || lastText;
 
-      await fetch(`${BRIDGE_API_BASE}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: task.taskId,
-          success: true,
-          text: finalText,
-          conversationInfo: getConversationInfo()
-        })
+      await httpReq('POST', '/result', {
+        taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'RESPONSE_RECEIVED',
+        success: true,
+        text: finalText,
+        conversationInfo: getConversationInfo(),
+        completedAt: Date.now()
       });
 
       updateBadge('connected', 'Hoàn tất! Sẵn sàng nhận lệnh mới');
     } catch (err) {
       console.error('[Văn Phòng AI] Lỗi:', err);
       updateBadge('connected', 'Gặp lỗi: ' + err.message);
-      await fetch(`${BRIDGE_API_BASE}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: task.taskId,
-          success: false,
-          error: err.message
-        })
+
+      await httpReq('POST', '/result', {
+        taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'FAILED',
+        success: false,
+        error: err.message
       }).catch(() => {});
     } finally {
       isExecutingTask = false;
     }
   }
 
-  async function pollDashboard() {
-    if (isExecutingTask) return;
-
+  async function performHandshake() {
     try {
       const conv = getConversationInfo();
-      const res = await fetch(`${BRIDGE_API_BASE}/poll?url=${encodeURIComponent(conv.url)}&convId=${encodeURIComponent(conv.conversationId)}&title=${encodeURIComponent(conv.title)}`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
+      const res = await httpReq('POST', '/handshake', {
+        clientVersion: '1.2.0-userscript',
+        url: conv.url,
+        conversationId: conv.conversationId,
+        title: conv.title,
+        timestamp: Date.now()
       });
-
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-
-      updateBadge('connected', `Đã liên kết: ${conv.conversationId.substring(0, 12)}...`);
-
-      if (data.hasTask && data.task && !isExecutingTask) {
-        console.log('[Văn Phòng AI] Nhận task mới từ Sếp Quill:', data.task);
-        executeTask(data.task);
+      if (res && res.ok && res.sessionId) {
+        activeSessionId = res.sessionId;
+        const shortId = (conv.conversationId && conv.conversationId !== 'current-chat')
+          ? conv.conversationId.substring(0, 10) + '...'
+          : 'Tab Hiện Tại';
+        updateBadge('connected', `Đã liên kết: ${shortId}`);
+        return true;
       }
-    } catch (err) {
-      updateBadge('disconnected', 'Chưa kết nối Dashboard (:3333)');
+      updateBadge('disconnected', 'Handshake chưa thành công');
+      return false;
+    } catch (e) {
+      updateBadge('disconnected', 'Mất kết nối Dashboard (:3333)');
+      return false;
     }
   }
 
-  setTimeout(() => {
+  async function pollDashboard() {
+    if (isExecutingTask) return;
+    try {
+      const conv = getConversationInfo();
+      const res = await httpReq('GET', `/poll?url=${encodeURIComponent(conv.url)}&convId=${encodeURIComponent(conv.conversationId)}&title=${encodeURIComponent(conv.title)}&sessionId=${encodeURIComponent(activeSessionId || '')}`);
+      if (res && res.hasTask && res.task && !isExecutingTask) {
+        executeTask(res.task);
+      }
+    } catch (e) {}
+  }
+
+  function start() {
     createFloatingBadge();
-    setInterval(pollDashboard, 1500);
-    pollDashboard();
-  }, 1000);
+    performHandshake().then(() => {
+      setInterval(pollDashboard, 1500);
+      setInterval(() => {
+        const conv = getConversationInfo();
+        httpReq('POST', '/heartbeat', { ...conv, sessionId: activeSessionId }).catch(() => {});
+      }, 5000);
+    });
+
+    window.addEventListener('popstate', performHandshake);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 })();

@@ -1,0 +1,78 @@
+{
+  "summary": {
+    "total": 10,
+    "passed": 10
+  },
+  "tests": [
+    {
+      "id": "TC-B01",
+      "name": "Handshake hai chiều Server-Extension thành công",
+      "passed": true,
+      "evidence": "Status: 200, SessionId: sess-1794091285734-1430, ServerVersion: 3.0.1",
+      "timestamp": "2026-11-07T22:41:25.739Z"
+    },
+    {
+      "id": "TC-B02",
+      "name": "Gửi Heartbeat định kỳ cập nhật trạng thái session",
+      "passed": true,
+      "evidence": "Status: 200, isConnected: true",
+      "timestamp": "2026-11-07T22:41:25.742Z"
+    },
+    {
+      "id": "TC-B03",
+      "name": "Status API trả về đúng Session và URL đã Handshake",
+      "passed": true,
+      "evidence": "isConnected: true, Session: sess-1794091285734-1430, Conv: test-handshake-conv",
+      "timestamp": "2026-11-07T22:41:25.747Z"
+    },
+    {
+      "id": "TC-B04",
+      "name": "Chu trình 5 trạng thái trọn vẹn kèm Correlation ID",
+      "passed": true,
+      "evidence": "Task: TASK-TP-1794091285780, Correlation: CORR-GPT-1794091285780-4374, Dispatch: Đã hoàn tất thi hành và nghiệm thu!",
+      "timestamp": "2026-11-07T22:41:27.025Z"
+    },
+    {
+      "id": "TC-B05",
+      "name": "Tab Closed thông báo lập tức chuyển trạng thái sang DISCONNECTED",
+      "passed": true,
+      "evidence": "tab-closed status: 200, isConnected: false",
+      "timestamp": "2026-11-07T22:41:27.037Z"
+    },
+    {
+      "id": "TC-B06",
+      "name": "Tái thiết lập kết nối Handshake ngay sau khi Reload tab",
+      "passed": true,
+      "evidence": "New Session: sess-1794091287041-7, isConnected: true",
+      "timestamp": "2026-11-07T22:41:27.043Z"
+    },
+    {
+      "id": "TC-B07",
+      "name": "Kích hoạt Fallback minh bạch có ghi nhãn RULE_ENGINE_FALLBACK khi mất kết nối",
+      "passed": true,
+      "evidence": "RoutingSource: RULE_ENGINE_FALLBACK",
+      "timestamp": "2026-11-07T22:41:27.650Z"
+    },
+    {
+      "id": "TC-B08",
+      "name": "NV Video tạo sản phẩm video MP4 hoàn chỉnh bằng FFmpeg (không chỉ timeline JSON)",
+      "passed": true,
+      "evidence": "Tệp: 06_DU_LIEU_VA_MOCKS/VIDEOS/video_viral_ky_luat_thep_9_16_remix.mp4, Size: 3.61MB",
+      "timestamp": "2026-11-07T22:42:46.499Z"
+    },
+    {
+      "id": "TC-B09",
+      "name": "Sản phẩm Video dừng ở trạng thái qc_passed_pending_boss (Chờ Sếp duyệt thẩm mỹ)",
+      "passed": true,
+      "evidence": "Status: qc_passed_pending_boss, RequiresBoss: true",
+      "timestamp": "2026-11-07T22:42:46.499Z"
+    },
+    {
+      "id": "TC-B10",
+      "name": "Quy trình Sếp phê duyệt thẩm mỹ chuyển thành công sang APPROVED / DONE",
+      "passed": true,
+      "evidence": "Boss Review Status: approved",
+      "timestamp": "2026-11-07T22:42:46.505Z"
+    }
+  ]
+}

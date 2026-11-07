@@ -1,13 +1,22 @@
 /**
- * VĂN PHÒNG AI STUDIO - CHATGPT PLUS BRIDGE CONTENT SCRIPT (v1.0.1)
- * Hoạt động qua Background Service Worker để miễn nhiễm 100% với CSP của chatgpt.com
+ * VĂN PHÒNG AI STUDIO - CHATGPT PLUS BRIDGE CONTENT SCRIPT (v1.2.0)
+ * Hoạt động qua Background Service Worker với cơ chế:
+ * 1. Two-way Handshake & Heartbeat
+ * 2. Correlation ID & ACK 2 chiều
+ * 3. 5-State Lifecycle: SENT -> ACKNOWLEDGED -> PROCESSING -> RESPONSE_RECEIVED -> FAILED
+ * 4. Phát hiện điều hướng SPA (Next.js / ChatGPT Web)
+ * 5. Chống rớt kết nối khi tab chuyển sang background
  */
 
 (function () {
-  console.log('🚀 [Văn Phòng AI Studio] ChatGPT Bridge v1.0.1 đang khởi chạy...');
+  console.log('🚀 [Văn Phòng AI Studio] ChatGPT Bridge Content Script v1.2.0 khởi chạy...');
 
   let isExecutingTask = false;
   let statusBadge = null;
+  let activeSessionId = null;
+  let backgroundPort = null;
+  let pollIntervalId = null;
+  let heartbeatIntervalId = null;
 
   // Helper gửi message qua background service worker
   function sendExtensionMessage(type, data) {
@@ -25,21 +34,35 @@
           resolve({ success: false, error: e.message });
         }
       } else {
-        // Fallback fetch trực tiếp (dành cho console snippet / userscript)
+        // Fallback fetch trực tiếp cho Userscript / Dev console
         const baseUrl = 'http://localhost:3333/api/chatgpt-bridge';
+        const endpointMap = {
+          HANDSHAKE: '/handshake',
+          HEARTBEAT: '/heartbeat',
+          ACK: '/ack',
+          POLL: '/poll',
+          LOG: '/log',
+          RESULT: '/result',
+          STATUS: '/status'
+        };
+        const ep = endpointMap[type] || '/poll';
         if (type === 'POLL') {
-          const { url, convId, title } = data || {};
-          fetch(`${baseUrl}/poll?url=${encodeURIComponent(url || '')}&convId=${encodeURIComponent(convId || '')}&title=${encodeURIComponent(title || '')}`)
+          const { url, convId, title, sessionId } = data || {};
+          fetch(`${baseUrl}/poll?url=${encodeURIComponent(url || '')}&convId=${encodeURIComponent(convId || '')}&title=${encodeURIComponent(title || '')}&sessionId=${encodeURIComponent(sessionId || '')}`)
             .then(r => r.json())
             .then(d => resolve({ success: true, data: d }))
             .catch(e => resolve({ success: false, error: e.message }));
-        } else if (type === 'LOG') {
-          fetch(`${baseUrl}/log`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        } else if (type === 'STATUS') {
+          fetch(`${baseUrl}/status`)
             .then(r => r.json())
             .then(d => resolve({ success: true, data: d }))
             .catch(e => resolve({ success: false, error: e.message }));
-        } else if (type === 'RESULT') {
-          fetch(`${baseUrl}/result`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        } else {
+          fetch(`${baseUrl}${ep}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data || {})
+          })
             .then(r => r.json())
             .then(d => resolve({ success: true, data: d }))
             .catch(e => resolve({ success: false, error: e.message }));
@@ -48,7 +71,22 @@
     });
   }
 
-  // 1. Tạo huy hiệu nổi
+  // Kết nối Port giữ service worker tỉnh táo
+  function connectBackgroundPort() {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.connect) {
+      try {
+        backgroundPort = chrome.runtime.connect({ name: 'chatgpt-bridge-port' });
+        backgroundPort.onDisconnect.addListener(() => {
+          backgroundPort = null;
+          setTimeout(connectBackgroundPort, 3000);
+        });
+      } catch (e) {
+        backgroundPort = null;
+      }
+    }
+  }
+
+  // 1. Tạo huy hiệu nổi trạng thái trên giao diện ChatGPT
   function createFloatingBadge() {
     if (document.getElementById('van-phong-ai-badge')) return;
 
@@ -77,8 +115,8 @@
     statusBadge.innerHTML = `
       <div id="vpai-dot" style="width: 10px !important; height: 10px !important; border-radius: 50% !important; background: #94a3b8 !important;"></div>
       <div>
-        <div style="font-weight: 800 !important; color: #fbbf24 !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;">VĂN PHÒNG AI STUDIO</div>
-        <div id="vpai-status-text" style="color: #94a3b8 !important; font-size: 11px !important; font-weight: 500 !important;">Đang kiểm tra kết nối Dashboard...</div>
+        <div style="font-weight: 800 !important; color: #fbbf24 !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;">VĂN PHÒNG AI STUDIO v3.0</div>
+        <div id="vpai-status-text" style="color: #94a3b8 !important; font-size: 11px !important; font-weight: 500 !important;">Đang bắt tay (Handshake)...</div>
       </div>
     `;
 
@@ -102,17 +140,17 @@
       dot.style.background = '#10b981';
       dot.style.boxShadow = '0 0 10px #10b981';
       label.style.color = '#34d399';
-      label.innerText = text || 'Đã liên kết Trưởng phòng';
+      label.innerText = text || 'Đã liên kết Trưởng phòng (Handshake OK)';
     } else if (status === 'working') {
       dot.style.background = '#f59e0b';
       dot.style.boxShadow = '0 0 10px #f59e0b';
       label.style.color = '#fbbf24';
-      label.innerText = text || 'Đang nhận lệnh & sinh câu trả lời...';
+      label.innerText = text || 'Đang xử lý & truyền thông tin...';
     } else {
       dot.style.background = '#ef4444';
       dot.style.boxShadow = 'none';
       label.style.color = '#f87171';
-      label.innerText = text || 'Chưa bật Dashboard (:3333)';
+      label.innerText = text || 'Chưa kết nối Dashboard (:3333)';
     }
   }
 
@@ -126,6 +164,7 @@
     };
   }
 
+  // 2. Tìm ô nhập liệu của ChatGPT (đa dạng phiên bản)
   function findPromptInput() {
     return document.querySelector('#prompt-textarea') ||
            document.querySelector('div[contenteditable="true"]') ||
@@ -133,6 +172,7 @@
            document.querySelector('textarea');
   }
 
+  // 3. Điền prompt vào ô chat an toàn và kích hoạt event
   async function injectText(text) {
     const inputEl = findPromptInput();
     if (!inputEl) {
@@ -149,35 +189,42 @@
       success = false;
     }
 
-    if (!success) {
+    if (!success || (inputEl.textContent || inputEl.value || '').trim().length === 0) {
       if (inputEl.tagName.toLowerCase() === 'textarea') {
         inputEl.value = text;
       } else {
+        // ProseMirror / Lexical paragraph structure
         inputEl.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
       }
+      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
     return true;
   }
 
+  // 4. Tìm nút gửi của ChatGPT
   function findSendButton() {
     return document.querySelector('button[data-testid="send-button"]') ||
            document.querySelector('button[aria-label="Send prompt"]') ||
+           document.querySelector('button[aria-label="Send message"]') ||
            document.querySelector('button[aria-label="Gửi lời nhắc"]') ||
+           document.querySelector('button[aria-label="Gửi tin nhắn"]') ||
            document.querySelector('button[data-testid="fruitjuice-send-button"]') ||
            document.querySelector('form button[type="submit"]');
   }
 
+  // 5. Kiểm tra nút Stop generating (đang sinh phản hồi)
   function isStopButtonVisible() {
     return !!(
       document.querySelector('button[data-testid="stop-button"]') ||
-      document.querySelector('button[aria-label="Stop generating"]') ||
-      document.querySelector('button[aria-label="Dừng tạo"]') ||
+      document.querySelector('button[aria-label*="Stop"]') ||
+      document.querySelector('button[aria-label*="Dừng"]') ||
       document.querySelector('.result-streaming')
     );
   }
 
+  // 6. Lấy phản hồi mới nhất của Assistant
   function getLatestAssistantResponse() {
     const assistantNodes = document.querySelectorAll('[data-message-author-role="assistant"]');
     if (assistantNodes.length > 0) {
@@ -187,15 +234,31 @@
     return '';
   }
 
+  // 7. THỰC THI TASK THEO 5 TRẠNG THÁI CHUẨN
   async function executeTask(task) {
     if (isExecutingTask) return;
     isExecutingTask = true;
-    updateBadge('working', 'Đang nhập chỉ đạo của Sếp...');
+
+    const correlationId = task.correlationId || `CORR-${task.taskId}`;
+    console.log(`[Văn Phòng AI] Bắt đầu xử lý task [${task.taskId}], Correlation: [${correlationId}]`);
+
+    // GỬI ACK NGAY LẬP TỨC
+    await sendExtensionMessage('ACK', {
+      taskId: task.taskId,
+      correlationId: correlationId,
+      status: 'ACKNOWLEDGED',
+      acknowledgedAt: Date.now()
+    });
+
+    updateBadge('working', 'Đã nhận lệnh (ACK). Đang nhập chỉ đạo...');
 
     try {
+      // TRẠNG THÁI: PROCESSING
       await sendExtensionMessage('LOG', {
         taskId: task.taskId,
-        log: `[ChatGPT Tab] Đã nhận chỉ đạo Sếp, đang tự động nạp vào ô chat Trưởng phòng...`,
+        correlationId: correlationId,
+        status: 'PROCESSING',
+        log: `[ChatGPT Tab] Đã nhận chỉ đạo Sếp (Correlation: ${correlationId}), đang điền vào ô chat Trưởng phòng...`,
         progress: 35
       });
 
@@ -222,12 +285,14 @@
 
       await sendExtensionMessage('LOG', {
         taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'PROCESSING',
         log: `[ChatGPT Tab] Đã bấm Gửi, Trưởng phòng ChatGPT Plus đang sinh phản hồi...`,
         progress: 50
       });
 
       let startedGenerating = false;
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 400));
         if (isStopButtonVisible()) {
           startedGenerating = true;
@@ -243,7 +308,7 @@
       const startTime = Date.now();
 
       while (Date.now() - startTime < maxWaitSeconds * 1000) {
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 1000));
         const currentText = getLatestAssistantResponse();
         const stillGenerating = isStopButtonVisible();
 
@@ -256,11 +321,14 @@
 
         lastText = currentText;
 
-        if (stillGenerating && currentText.length > 50) {
+        if (stillGenerating && currentText.length > 30) {
+          // Gửi heartbeat tiến độ để server watchdog không bao giờ timeout
           await sendExtensionMessage('LOG', {
             taskId: task.taskId,
+            correlationId: correlationId,
+            status: 'PROCESSING',
             log: `[ChatGPT Tab] Trưởng phòng đang viết: "${currentText.slice(-60).replace(/\n/g, ' ')}..."`,
-            progress: 65
+            progress: Math.min(85, 50 + Math.floor(currentText.length / 30))
           });
         }
 
@@ -269,19 +337,27 @@
 
       const finalText = getLatestAssistantResponse() || lastText;
 
+      // TRẠNG THÁI: RESPONSE_RECEIVED
       await sendExtensionMessage('RESULT', {
         taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'RESPONSE_RECEIVED',
         success: true,
         text: finalText,
-        conversationInfo: getConversationInfo()
+        conversationInfo: getConversationInfo(),
+        completedAt: Date.now()
       });
 
       updateBadge('connected', 'Hoàn tất! Sẵn sàng nhận lệnh mới');
     } catch (err) {
       console.error('[Văn Phòng AI] Lỗi:', err);
       updateBadge('connected', 'Gặp lỗi: ' + err.message);
+
+      // TRẠNG THÁI: FAILED
       await sendExtensionMessage('RESULT', {
         taskId: task.taskId,
+        correlationId: correlationId,
+        status: 'FAILED',
         success: false,
         error: err.message
       });
@@ -290,41 +366,100 @@
     }
   }
 
+  // 8. HANDSHAKE HAI CHIỀU VỚI SERVER
+  async function performHandshake() {
+    try {
+      const conv = getConversationInfo();
+      const res = await sendExtensionMessage('HANDSHAKE', conv);
+      if (res && res.success && res.data && res.data.ok) {
+        activeSessionId = res.data.sessionId;
+        const shortId = (conv.conversationId && conv.conversationId !== 'current-chat')
+          ? conv.conversationId.substring(0, 10) + '...'
+          : 'Tab Hiện Tại';
+        updateBadge('connected', `Đã liên kết: ${shortId}`);
+        return true;
+      } else {
+        updateBadge('disconnected', 'Handshake chưa thành công');
+        return false;
+      }
+    } catch (e) {
+      updateBadge('disconnected', 'Lỗi kết nối Dashboard (:3333)');
+      return false;
+    }
+  }
+
+  // 9. HEARTBEAT ĐỊNH KỲ
+  async function sendHeartbeat() {
+    try {
+      const conv = getConversationInfo();
+      await sendExtensionMessage('HEARTBEAT', {
+        ...conv,
+        sessionId: activeSessionId
+      });
+    } catch (e) {}
+  }
+
+  // 10. POLL TASK
   async function pollDashboard() {
     if (isExecutingTask) return;
 
     try {
       const conv = getConversationInfo();
-      const res = await sendExtensionMessage('POLL', conv);
+      const res = await sendExtensionMessage('POLL', {
+        ...conv,
+        sessionId: activeSessionId
+      });
 
       if (res && res.success && res.data) {
         const data = res.data;
-        const shortId = (conv.conversationId && conv.conversationId !== 'current-chat') 
-          ? conv.conversationId.substring(0, 10) + '...' 
-          : 'Tab Hiện Tại';
-        updateBadge('connected', `Đã liên kết: ${shortId}`);
-
         if (data.hasTask && data.task && !isExecutingTask) {
-          console.log('[Văn Phòng AI] Nhận task mới từ Sếp Quill:', data.task);
+          console.log('[Văn Phòng AI] Nhận task mới:', data.task);
           executeTask(data.task);
         }
-      } else {
-        updateBadge('disconnected', 'Chưa kết nối Dashboard (:3333)');
       }
-    } catch (err) {
-      updateBadge('disconnected', 'Lỗi kết nối Dashboard');
-    }
+    } catch (err) {}
   }
 
-  function start() {
+  // 11. BẮT SỰ KIỆN SPA NAVIGATION TRONG CHATGPT
+  function setupSpaNavigationWatcher() {
+    let lastUrl = window.location.href;
+    const observer = new MutationObserver(() => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        console.log('[Văn Phòng AI] Phát hiện chuyển trang SPA:', lastUrl);
+        performHandshake();
+      }
+    });
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+    window.addEventListener('popstate', () => {
+      performHandshake();
+    });
+  }
+
+  // KHỞI ĐỘNG
+  async function init() {
     createFloatingBadge();
-    setInterval(pollDashboard, 1500);
-    pollDashboard();
+    connectBackgroundPort();
+
+    const ok = await performHandshake();
+    if (!ok) {
+      // Thử lại handshake sau 2s nếu server chưa kịp lên
+      setTimeout(performHandshake, 2000);
+    }
+
+    setupSpaNavigationWatcher();
+
+    // Heartbeat định kỳ mỗi 5s
+    heartbeatIntervalId = setInterval(sendHeartbeat, 5000);
+
+    // Poll task mỗi 1.5s
+    pollIntervalId = setInterval(pollDashboard, 1500);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    start();
+    init();
   }
 })();

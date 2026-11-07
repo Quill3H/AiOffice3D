@@ -1706,6 +1706,10 @@
       evtSource.addEventListener('memory_update', () => {
         loadMemory();
       });
+
+      evtSource.addEventListener('bridge_status', () => {
+        checkBridgeStatusNow();
+      });
     }
 
     // Modal Helpers
@@ -1741,16 +1745,27 @@
         const modalDesc = document.getElementById('modal-bridge-status-desc');
 
         if (data.isConnected) {
-          if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
-          if (badgeLabel) {
-            const shortId = (data.conversationId && data.conversationId !== 'current-chat') 
-              ? data.conversationId.substring(0, 8) + '...' 
-              : 'Tab Chat';
-            badgeLabel.innerHTML = `ChatGPT Plus Web: <span class="text-emerald-400 font-bold">ĐÃ LIÊN KẾT (${shortId})</span>`;
+          const shortId = (data.conversationId && data.conversationId !== 'current-chat') 
+            ? data.conversationId.substring(0, 8) + '...' 
+            : 'Tab Chat';
+
+          if (data.state === 'PROCESSING') {
+            if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+            if (badgeLabel) badgeLabel.innerHTML = `ChatGPT: <span class="text-amber-400 font-bold">ĐANG SINH PHẢN HỒI...</span>`;
+          } else if (data.state === 'ACKNOWLEDGED') {
+            if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse';
+            if (badgeLabel) badgeLabel.innerHTML = `ChatGPT: <span class="text-blue-400 font-bold">ĐÃ NHẬN LỆNH (ACK)</span>`;
+          } else if (data.state === 'SENT') {
+            if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse';
+            if (badgeLabel) badgeLabel.innerHTML = `ChatGPT: <span class="text-yellow-400 font-bold">ĐÃ GỬI (CHỜ ACK)</span>`;
+          } else {
+            if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+            if (badgeLabel) badgeLabel.innerHTML = `ChatGPT Plus Web: <span class="text-emerald-400 font-bold">ĐÃ LIÊN KẾT (${shortId})</span>`;
           }
+
           if (modalDot) modalDot.className = 'w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]';
           if (modalTitle) modalTitle.innerHTML = `<span class="text-emerald-400">ĐÃ KẾT NỐI VỚI TAB CHATGPT PLUS</span>`;
-          if (modalDesc) modalDesc.innerText = `Đoạn chat: ${data.conversationId} | Tiêu đề: ${data.title || 'ChatGPT'}`;
+          if (modalDesc) modalDesc.innerText = `Trạng thái: ${data.state || 'IDLE'} | Đoạn chat: ${data.conversationId} | Tiêu đề: ${data.title || 'ChatGPT'}`;
         } else {
           if (badgeDot) badgeDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
           if (badgeLabel) badgeLabel.innerText = 'ChatGPT Web: Chưa kết nối (Bấm để xem)';

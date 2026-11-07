@@ -458,19 +458,21 @@ function buildOfficeContextSnapshot() {
   return snapshot.join('\n');
 }
 
-// CHATGPT PLUS WEB BRIDGE STATE
+// CHATGPT PLUS WEB BRIDGE STATE (v1.2.0 - Two-Way Handshake & Watchdog)
 const bridgeState = {
   isConnected: false,
   lastSeen: 0,
+  sessionId: null,
+  tabId: null,
   url: '',
   conversationId: '',
   title: '',
-  pendingTask: null, // { taskId, prompt, resolve, reject, startedAt, dispatched }
+  pendingTask: null, // { taskId, correlationId, prompt, status: 'SENT'|'ACKNOWLEDGED'|'PROCESSING'|'RESPONSE_RECEIVED'|'FAILED', resolve, reject, startedAt, lastActivityAt, dispatched }
   history: []
 };
 
 function isBridgeActive() {
-  return (Date.now() - bridgeState.lastSeen) < 15000;
+  return bridgeState.isConnected && (Date.now() - bridgeState.lastSeen) < 45000;
 }
 
 // IDEMPOTENCY & DISPATCH CACHE
@@ -564,20 +566,149 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 3. API: CHATGPT PLUS WEB BRIDGE
+  // 3. API: CHATGPT PLUS WEB BRIDGE (TWO-WAY HANDSHAKE & HEARTBEAT & ACK)
   if (pathname === '/api/chatgpt-bridge/status') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       isConnected: isBridgeActive(),
+      state: bridgeState.pendingTask ? bridgeState.pendingTask.status : (isBridgeActive() ? 'IDLE' : 'DISCONNECTED'),
       lastSeen: bridgeState.lastSeen,
+      sessionId: bridgeState.sessionId,
+      tabId: bridgeState.tabId,
       url: bridgeState.url,
       conversationId: bridgeState.conversationId,
       title: bridgeState.title,
-      hasPendingTask: !!bridgeState.pendingTask
+      hasPendingTask: !!bridgeState.pendingTask,
+      currentCorrelationId: bridgeState.pendingTask ? bridgeState.pendingTask.correlationId : null
     }));
     return;
   }
 
+  // A. HANDSHAKE (BẮT TAY 2 CHIỀU)
+  if (pathname === '/api/chatgpt-bridge/handshake' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        const sessionId = `sess-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        bridgeState.isConnected = true;
+        bridgeState.lastSeen = Date.now();
+        bridgeState.sessionId = sessionId;
+        if (data.tabId) bridgeState.tabId = data.tabId;
+        if (data.url) bridgeState.url = data.url;
+        if (data.conversationId) bridgeState.conversationId = data.conversationId;
+        if (data.title) bridgeState.title = data.title;
+
+        const tp = AGENTS.find(a => a.id === 'truong-phong');
+        if (tp) {
+          tp.bridgeConnected = true;
+          tp.bridgeConvId = bridgeState.conversationId;
+        }
+
+        broadcastEvent('bridge_status', {
+          isConnected: true,
+          sessionId,
+          conversationId: bridgeState.conversationId,
+          title: bridgeState.title
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          ok: true,
+          sessionId,
+          serverVersion: '3.0.1',
+          heartbeatIntervalMs: 5000,
+          timeoutMs: 120000
+        }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // B. HEARTBEAT ĐỊNH KỲ
+  if (pathname === '/api/chatgpt-bridge/heartbeat' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        bridgeState.isConnected = true;
+        bridgeState.lastSeen = Date.now();
+        if (data.tabId) bridgeState.tabId = data.tabId;
+        if (data.url) bridgeState.url = data.url;
+        if (data.conversationId) bridgeState.conversationId = data.conversationId;
+        if (data.title) bridgeState.title = data.title;
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: true, isConnected: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // C. TAB CLOSED (Extension báo tab ChatGPT đã đóng)
+  if (pathname === '/api/chatgpt-bridge/tab-closed' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        bridgeState.isConnected = false;
+        const tp = AGENTS.find(a => a.id === 'truong-phong');
+        if (tp) tp.bridgeConnected = false;
+
+        if (bridgeState.pendingTask) {
+          bridgeState.pendingTask.reject(new Error('Tab ChatGPT Web đã bị đóng trong khi đang xử lý'));
+          bridgeState.pendingTask = null;
+        }
+
+        broadcastEvent('bridge_status', { isConnected: false, reason: 'TAB_CLOSED' });
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // D. MESSAGE ACK (Xác nhận nhận task từ Extension)
+  if (pathname === '/api/chatgpt-bridge/ack' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        if (bridgeState.pendingTask && (bridgeState.pendingTask.taskId === data.taskId || bridgeState.pendingTask.correlationId === data.correlationId)) {
+          bridgeState.pendingTask.status = 'ACKNOWLEDGED';
+          bridgeState.pendingTask.lastActivityAt = Date.now();
+
+          broadcastEvent('log_stream', {
+            agentId: 'truong-phong',
+            agentName: 'Trưởng phòng (ChatGPT Plus)',
+            log: `[${new Date().toLocaleTimeString('vi-VN')}] 📥 [ACK] Tab ChatGPT đã nhận nhiệm vụ (Correlation: ${data.correlationId || bridgeState.pendingTask.correlationId}). Đang chuẩn bị đưa vào ô chat...`,
+            progress: 32,
+            currentStep: 'Tab ChatGPT đã nhận lệnh (ACK)'
+          });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // E. POLL TASK
   if (pathname === '/api/chatgpt-bridge/poll') {
     const query = parsedUrl.query || {};
     bridgeState.isConnected = true;
@@ -595,10 +726,12 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     if (bridgeState.pendingTask && !bridgeState.pendingTask.dispatched) {
       bridgeState.pendingTask.dispatched = true;
+      bridgeState.pendingTask.status = 'SENT';
       res.end(JSON.stringify({
         hasTask: true,
         task: {
           taskId: bridgeState.pendingTask.taskId,
+          correlationId: bridgeState.pendingTask.correlationId,
           prompt: bridgeState.pendingTask.prompt
         }
       }));
@@ -608,12 +741,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // F. LOG & PROGRESS
   if (pathname === '/api/chatgpt-bridge/log' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const data = JSON.parse(body || '{}');
+        if (bridgeState.pendingTask && (bridgeState.pendingTask.taskId === data.taskId || bridgeState.pendingTask.correlationId === data.correlationId)) {
+          bridgeState.pendingTask.status = 'PROCESSING';
+          bridgeState.pendingTask.lastActivityAt = Date.now(); // RESET WATCHDOG
+        }
+
         const tp = AGENTS.find(a => a.id === 'truong-phong');
         if (tp && tp.currentTask) {
           if (data.log) tp.currentTask.logs.push(data.log);
@@ -636,14 +775,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // G. RESULT
   if (pathname === '/api/chatgpt-bridge/result' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const data = JSON.parse(body || '{}');
-        if (bridgeState.pendingTask && bridgeState.pendingTask.taskId === data.taskId) {
-          bridgeState.pendingTask.resolve(data);
+        if (bridgeState.pendingTask && (bridgeState.pendingTask.taskId === data.taskId || bridgeState.pendingTask.correlationId === data.correlationId)) {
+          if (data.success) {
+            bridgeState.pendingTask.status = 'RESPONSE_RECEIVED';
+            bridgeState.pendingTask.resolve(data);
+          } else {
+            bridgeState.pendingTask.status = 'FAILED';
+            bridgeState.pendingTask.reject(new Error(data.error || 'Extension báo lỗi khi chạy'));
+          }
           bridgeState.pendingTask = null;
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -939,6 +1085,7 @@ const server = http.createServer((req, res) => {
         if (isBridgeLive) {
           const officeSnapshot = buildOfficeContextSnapshot();
           const bridgeTaskId = `TASK-TP-${Date.now()}`;
+          const correlationId = `CORR-GPT-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
           const gptPrompt = `[BÁO CÁO NỘI BỘ VĂN PHÒNG - ${timeNow}]
 ${officeSnapshot}
 
@@ -950,31 +1097,54 @@ Chỉ định chính xác 1 nhân viên AI chuyên môn phụ trách chính: ch�
           broadcastEvent('log_stream', {
             agentId: tpAgent.id,
             agentName: tpAgent.name,
-            log: `[${timeNow}] 🚀 Gửi lệnh vào tab ChatGPT Plus Web. Đang chờ phản hồi...`,
+            log: `[${timeNow}] 🚀 [SENT] Giao việc vào tab ChatGPT Plus Web (Correlation: ${correlationId}). Chờ Extension phản hồi...`,
             progress: 30,
             currentStep: 'Chờ phản hồi từ ChatGPT Plus Web...'
           });
 
           try {
-            let timerId = null;
+            let watchdogTimer = null;
             const bridgePromise = new Promise((resolve, reject) => {
               bridgeState.pendingTask = {
                 taskId: bridgeTaskId,
+                correlationId,
                 prompt: gptPrompt,
+                status: 'SENT',
                 resolve,
                 reject,
                 startedAt: Date.now(),
+                lastActivityAt: Date.now(),
                 dispatched: false
               };
             });
 
-            // Realistic timeout for web LLM (20 seconds)
+            // Dynamic Watchdog timer: Cho phép tối đa 120s, nhưng yêu cầu có hoạt động (heartbeat/progress) trong vòng 45s
             const timeoutPromise = new Promise((_, reject) => {
-              timerId = setTimeout(() => reject(new Error('Hết thời gian chờ phản hồi từ ChatGPT Web (20s)')), 20000);
+              const maxTimeoutMs = 120000;
+              const maxInactivityMs = 45000;
+              const startTime = Date.now();
+
+              watchdogTimer = setInterval(() => {
+                if (!bridgeState.pendingTask) {
+                  clearInterval(watchdogTimer);
+                  return;
+                }
+                const now = Date.now();
+                const totalElapsed = now - startTime;
+                const inactiveElapsed = now - bridgeState.pendingTask.lastActivityAt;
+
+                if (totalElapsed > maxTimeoutMs) {
+                  clearInterval(watchdogTimer);
+                  reject(new Error(`Hết thời gian tối đa chờ phản hồi từ ChatGPT Web (${Math.round(maxTimeoutMs/1000)}s)`));
+                } else if (inactiveElapsed > maxInactivityMs) {
+                  clearInterval(watchdogTimer);
+                  reject(new Error(`Không nhận được tín hiệu xử lý từ tab ChatGPT sau ${Math.round(maxInactivityMs/1000)}s`));
+                }
+              }, 2000);
             });
 
             const result = await Promise.race([bridgePromise, timeoutPromise]);
-            if (timerId) clearTimeout(timerId);
+            if (watchdogTimer) clearInterval(watchdogTimer);
 
             if (result && result.success && result.text) {
               chatGptResponseText = result.text;
@@ -982,7 +1152,7 @@ Chỉ định chính xác 1 nhân viên AI chuyên môn phụ trách chính: ch�
               broadcastEvent('log_stream', {
                 agentId: tpAgent.id,
                 agentName: tpAgent.name,
-                log: `[${new Date().toLocaleTimeString('vi-VN')}] 💬 [CHATGPT_LIVE] Phản hồi: "${chatGptResponseText.substring(0, 140).replace(/\n/g, ' ')}..."`,
+                log: `[${new Date().toLocaleTimeString('vi-VN')}] 💬 [CHATGPT_LIVE] Phản hồi thành công: "${chatGptResponseText.substring(0, 140).replace(/\n/g, ' ')}..."`,
                 progress: 45,
                 currentStep: 'Trưởng phòng đã nhận kế hoạch từ ChatGPT Plus Web'
               });
@@ -993,7 +1163,7 @@ Chỉ định chính xác 1 nhân viên AI chuyên môn phụ trách chính: ch�
             broadcastEvent('log_stream', {
               agentId: tpAgent.id,
               agentName: tpAgent.name,
-              log: `[${new Date().toLocaleTimeString('vi-VN')}] ℹ️ [RULE_ENGINE_FALLBACK] ChatGPT Web không phản hồi kịp (timeout). Kích hoạt bộ định tuyến quy tắc nội bộ.`,
+              log: `[${new Date().toLocaleTimeString('vi-VN')}] ℹ️ [RULE_ENGINE_FALLBACK] ${bridgeErr.message}. Kích hoạt bộ định tuyến quy tắc nội bộ chuẩn.`,
               progress: 35,
               currentStep: 'Điều phối nội bộ theo quy tắc chuẩn'
             });

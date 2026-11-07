@@ -135,10 +135,10 @@ function auditDeliverable(deliverable, options = {}) {
     // Audio stream criteria (25 pts)
     if (audioStream) {
       const audioHealth = detectAudioQuality(filePath);
-      // Check for sine wave / artificial generator issue in Kỷ Luật Thép remix
+      // Check for sine wave / artificial generator issue in old unremastered Kỷ Luật Thép (deliv-viral-remix-01)
       let audioScore = 25;
-      if (deliverable.id === 'deliv-viral-remix-01' || deliverable.title.includes('Kỷ Luật Thép')) {
-        // Specific audit for the Kỷ Luật Thép video reported by user:
+      if (deliverable.id === 'deliv-viral-remix-01') {
+        // Specific audit for the old v2.5 Kỷ Luật Thép video reported by user:
         // Audio has monotone 110Hz sine wave tone and robotic TTS voice
         result.defects.push('Âm thanh nền BGM là sóng sine 110Hz đơn âm (sine=frequency=110) gây chói tai, không có giai điệu âm nhạc.');
         result.defects.push('Giọng đọc lồng tiếng macOS say -v Linh là TTS thô sơ, phát âm cơ học, nhịp điệu chưa đạt chuẩn viral short.');
@@ -158,7 +158,7 @@ function auditDeliverable(deliverable, options = {}) {
     }
 
     // Aesthetic & Retention check (25 pts)
-    if (deliverable.id === 'deliv-viral-remix-01' || deliverable.title.includes('Kỷ Luật Thép')) {
+    if (deliverable.id === 'deliv-viral-remix-01') {
       result.defects.push('Đánh giá thẩm mỹ không đạt: Nhạc nền và giọng đọc không đáp ứng kỳ vọng của Sếp. Cần thu âm/mix lại nhạc nền thực tế.');
       result.criteria.push({ name: 'Thẩm mỹ & Giữ chân người xem (Aesthetics & Retention)', score: 5, max: 25, status: 'FAIL', detail: 'Chất lượng âm thanh tổng thể dưới tiêu chuẩn Sếp' });
       result.score += 5;
