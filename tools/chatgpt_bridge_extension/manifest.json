@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Văn Phòng AI Studio - ChatGPT Plus Bridge",
+  "version": "1.0.1",
+  "description": "Cầu nối tự động hóa liên kết Dashboard Văn Phòng AI Studio với phiên chat ChatGPT Plus Web của Trưởng phòng",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Văn Phòng AI - ChatGPT Bridge"
+  },
+  "host_permissions": [
+    "http://localhost:3333/*",
+    "https://chatgpt.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
