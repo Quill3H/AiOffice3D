@@ -14,6 +14,7 @@ fi
 echo "🚀 Đang khởi động Văn Phòng AI Studio..."
 nohup node server.js > studio.log 2>&1 &
 SERVER_PID=$!
+disown $SERVER_PID 2>/dev/null || true
 
 sleep 1
 if ps -p $SERVER_PID > /dev/null; then
