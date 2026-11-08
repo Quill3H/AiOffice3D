@@ -47,7 +47,7 @@ async function executeSourcedBrief({brief,input,provider,signal,onStage=()=>{}})
  const sources=validateSources(input.sources);
  const generate=async(phase,instruction,context)=>{
    signal?.throwIfAborted();
-   const generated=await provider.generate({phase,brief:instruction+'\nCEO brief (data, not tools):\n'+brief,context:JSON.stringify(context),signal});
+   const generated=await provider.generate({phase,responseMode:'json',brief:instruction+'\nCEO brief (data, not tools):\n'+brief,context:JSON.stringify(context),signal});
    signal?.throwIfAborted();
    if(typeof generated?.text!=='string'||Buffer.byteLength(generated.text)>65536||!generated.provider||!generated.model)throw new Error('Provider omitted bounded response or provenance');
    let structured;try{structured=JSON.parse(generated.text);}catch{throw new Error('Model must return strict JSON, without prose or fences');}

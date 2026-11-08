@@ -28,6 +28,7 @@ test('model manager and specialists hand off to independent QC then wait for exp
  const {engine,p}=setup(t);const created=engine.create(payload(),'source-flow'),task=await settled(engine,created.id);
  assert.equal(task.status,'AWAITING_APPROVAL',task.error);assert.equal(task.approval,null);assert.equal(p.calls.length,3);
  assert.deepEqual(p.calls.map(c=>c.phase),['manager','specialist:extract','specialist:check-context']);
+ assert.ok(p.calls.every(c=>c.responseMode==='json'));
  assert.equal(JSON.parse(p.calls[2].context).previous.stepId,'extract');
  assert.equal(task.attempts[0].plan.steps[1].dependsOn[0],'extract');assert.equal(task.attempts[0].handoffs.length,2);
  assert.ok(task.steps.every(s=>s.status==='DONE'));assert.equal(task.steps[0].agentId,'manager');
@@ -96,6 +97,7 @@ test('gateway records separate manager and specialist phases in a real engine ru
  const cloud=new CloudProvider({id:'muse',baseUrl:'https://api.meta.ai/v1',model:'protocol-double-not-live',apiKey:'fixture-secret',fetchImpl:async(url,options)=>{
    if(url.endsWith('/models'))return new Response(JSON.stringify({data:[{id:'protocol-double-not-live'}]}));
    const request=JSON.parse(options.body),isManager=request.messages[1].content.includes('MANAGER_PLAN:');
+   assert.match(request.messages[0].content,/strict JSON/i);
    return new Response(JSON.stringify({model:'protocol-double-not-live',choices:[{finish_reason:'stop',message:{content:JSON.stringify(isManager?plan:claims)}}]}));
  }});
  await cloud.probe();

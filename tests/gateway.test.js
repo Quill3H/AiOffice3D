@@ -3,6 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {Store}=require('../src/store');
+const {LocalProvider}=require('../src/providers');
 const {CloudProvider,ProviderGateway}=require('../src/gateway');
 const {createGateway}=require('../src/gateway-config');
 function workspace(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'studio-gateway-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return dir;}
@@ -98,6 +99,7 @@ test('engine routes an explicitly selected configured provider and exposes all h
  engine.autoStart=true;const finished=new Promise(resolve=>{const check=()=>{const task=engine.get(engine.store.tasks()[0].id);if(!['QUEUED','RUNNING'].includes(task.status)){engine.off('change',check);resolve(task);}};engine.on('change',check);});engine.schedule();
  const done=await finished;assert.equal(done.status,'AWAITING_APPROVAL',done.error);
  assert.equal(done.attempts[0].provider,'kimi');assert.equal(store.providerCalls()[0].provider_id,'kimi');
+ assert.doesNotMatch(done.steps[0].title,/model local|mô hình cục bộ/i);
 });
 test('cloud timeout uses an actual abort deadline without fallback loops',async t=>{
  const p=new CloudProvider({id:'muse',baseUrl:'https://api.meta.ai/v1',model:'fixture-model',apiKey:'fixture-secret',timeoutMs:10,fetchImpl:async(url,{signal})=>{
@@ -124,4 +126,44 @@ test('cloud protocol rejects truncation, tool calls, missing model, invalid JSON
 test('missing API credential never attempts a model probe',async()=>{
  let requests=0;const p=new CloudProvider({id:'muse',baseUrl:'https://api.meta.ai/v1',model:'fixture-model',fetchImpl:async()=>{requests++;throw Error('Must not dispatch');}});
  assert.equal((await p.probe()).status,'NOT_CONFIGURED');assert.equal(requests,0);
+});
+test('local transient HTTP and transport failures advance to eligible cloud fallback once',async t=>{
+ for(const failure of [408,429,503,'network','timeout']){
+   const store=new Store(workspace(t));t.after(()=>store.close());
+   const local=new LocalProvider({baseUrl:'http://127.0.0.1:12345/v1',model:'fixture-model',fetchImpl:async url=>{
+     if(url.endsWith('/models'))return new Response(JSON.stringify({data:[{id:'fixture-model'}]}));
+     if(failure==='network')throw new TypeError('Fetch failed');
+     if(failure==='timeout')throw Object.assign(new Error('Timeout'),{name:'TimeoutError'});
+     return new Response('outage fixture',{status:failure});
+   }});
+   await ready(local);const providers=await ready(adapter('kimi'));
+   const gateway=new ProviderGateway({store,providers:[local,...providers],remoteCallLimit:1,freeQuota});
+   const result=await gateway.generate(args);
+   assert.equal(result.provider,'kimi');assert.equal(store.providerCalls().length,1);assert.equal(local.status().status,'NOT_CONNECTED');
+ }
+});
+test('local malformed successful output, fatal HTTP and caller cancellation never trigger fallback',async t=>{
+ for(const failure of ['model','json',401,'cancel']){
+   const store=new Store(workspace(t));t.after(()=>store.close());
+   const local=new LocalProvider({baseUrl:'http://127.0.0.1:12345/v1',model:'fixture-model',fetchImpl:async(url,{signal})=>{
+     if(url.endsWith('/models'))return new Response(JSON.stringify({data:[{id:'fixture-model'}]}));
+     if(failure==='cancel')return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+     if(failure===401)return new Response('Unauthorized',{status:401});
+     return new Response(failure==='json'?'invalid JSON':JSON.stringify({model:'different-model',choices:[{finish_reason:'stop',message:{content:'Wrong model'}}]}));
+   }});
+   const providers=await ready(local,adapter('kimi')),gateway=new ProviderGateway({store,providers,remoteCallLimit:1,freeQuota});
+   const controller=new AbortController(),pending=gateway.generate({...args,signal:controller.signal});
+   if(failure==='cancel')controller.abort(new Error('CEO cancelled fixture'));
+   await assert.rejects(pending);assert.equal(store.providerCalls().length,0);
+   if(failure==='cancel')assert.equal(local.status().status,'CONNECTED');
+ }
+});
+test('internal JSON mode aligns system instructions and refuses unsupported response modes',async()=>{
+ let captured,calls=0;
+ const local=new LocalProvider({baseUrl:'http://127.0.0.1:12345/v1',model:'fixture-model',fetchImpl:async(url,options)=>{
+   if(url.endsWith('/models'))return new Response(JSON.stringify({data:[{id:'fixture-model'}]}));
+   calls++;captured=JSON.parse(options.body);return new Response(JSON.stringify({model:'fixture-model',choices:[{finish_reason:'stop',message:{content:'{"claims":[]}'}}]}));
+ }});
+ await local.probe();await assert.rejects(()=>local.generate({...args,responseMode:'xml'}),/response mode/i);assert.equal(calls,0);
+ await local.generate({...args,responseMode:'json'});assert.match(captured.messages[0].content,/strict JSON/i);assert.doesNotMatch(captured.messages[0].content,/draft text only|State uncertainty/i);
 });

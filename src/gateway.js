@@ -63,7 +63,8 @@ class ProviderGateway {
    const quota=this.freeQuota?.[providerId];
    try{const url=new URL(quota.evidenceUrl);return quota.model===model&&url.protocol==='https:'&&!url.username&&!url.password&&Number.isFinite(Date.parse(quota.expiresAt))&&Date.parse(quota.expiresAt)>this.nowMs();}catch{return false;}
  }
- async generate({brief,context,signal,providerId,call}={}){
+ async generate({brief,context,signal,providerId,call,responseMode='text'}={}){
+   if(!['text','json'].includes(responseMode))throw new Error('Unsupported internal response mode');
    requireText(brief,'Brief',MAX_BRIEF_BYTES);requireText(context,'Context',MAX_CONTEXT_BYTES);signal?.throwIfAborted();
    if(providerId&&!this.supports(providerId))throw new Error('Unknown provider');
    const route=[...new Set([providerId,...this.providers.keys()].filter(Boolean))];
@@ -77,7 +78,7 @@ class ProviderGateway {
        reservation=this.store.reserveProviderCall({...call,providerId:id,model:state.model},this.remoteCallLimit);
      }
      try{
-       const result=await provider.generate({brief,context,signal});
+       const result=await provider.generate({brief,context,signal,responseMode});
        signal?.throwIfAborted();if(reservation)this.store.finishProviderCall(reservation,'SUCCEEDED',result.usage);
        return result;
      }catch(caught){

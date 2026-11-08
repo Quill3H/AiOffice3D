@@ -89,7 +89,7 @@ class Engine extends EventEmitter {
    ].map(s=>({...s,status:'QUEUED'}));
    const specialist={data_analysis:'finance',html_audit:'seo',system_check:'development',ai_draft:t.input.agentId||'content'}[t.kind];
    return [
-     {id:'execute',agentId:specialist,title:{data_analysis:'Tính thống kê từ CSV',html_audit:'Kiểm tra HTML đã cung cấp',system_check:'Đọc thông tin runtime',ai_draft:'Soạn bản nháp bằng model local'}[t.kind],dependsOn:[],mode:t.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL'},
+     {id:'execute',agentId:specialist,title:{data_analysis:'Tính thống kê từ CSV',html_audit:'Kiểm tra HTML đã cung cấp',system_check:'Đọc thông tin runtime',ai_draft:'Soạn bản nháp bằng model đã cấu hình'}[t.kind],dependsOn:[],mode:t.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL'},
      {id:'publish',agentId:'content',title:'Đóng gói báo cáo và bằng chứng',dependsOn:['execute'],mode:'DETERMINISTIC_TOOL'},
      {id:'qc',agentId:'qc',title:'Đối chiếu độc lập trước khi trình CEO',dependsOn:['publish'],mode:'DETERMINISTIC_TOOL'}
    ].map(s=>({...s,status:'QUEUED'}));
