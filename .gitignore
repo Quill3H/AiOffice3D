@@ -2,3 +2,11 @@
 studio.log
 tools/cua/
 server.log
+.studio/
+node_modules/
+.env
+.env.*
+!.env.example
+.superpowers/
+.impeccable/
+coverage/
