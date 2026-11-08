@@ -2,6 +2,7 @@
 const { Worker } = require('node:worker_threads');
 const { createHash } = require('node:crypto');
 const path = require('node:path');
+const {MAX_BRIEF_BYTES,MAX_CONTEXT_BYTES}=require('./limits');
 
 const hash = text => createHash('sha256').update(text).digest('hex');
 const jsonFile = (name, data) => ({ name, mime: 'application/json', content: JSON.stringify(data, null, 2) + '\n' });
@@ -39,12 +40,12 @@ function csvReport(data) {
   return '# CSV analysis\n\nComputed from the submitted CSV. Statistics below refer only to this source.\n\n```json\n' + JSON.stringify(data, null, 2) + '\n```\n\nLimitations: blank cells are missing, not zero. Nonnumeric cells are excluded from numeric statistics; mixed columns require review. Numbers use finite JavaScript floating-point arithmetic and may be rounded. No causal, financial or business advice is inferred.\n\nHuman review and CEO approval are required.\n';
 }
 function htmlFindings(html) {
-  const text = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
+  const text = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)(?=[\s/>])[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
   const attrs = tag => Object.fromEntries([...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g)].map(m => [m[1].toLowerCase(), m[2] ?? m[3] ?? m[4]]));
-  const titleMatch = text.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
-  const metas = [...text.matchAll(/<meta\b[^>]*>/gi)].map(m => attrs(m[0]));
-  const links = [...text.matchAll(/<a\b[^>]*>/gi)].map(m => attrs(m[0]));
-  return { schemaVersion: 1, kind: 'html_audit', source: { sha256: hash(html), bytes: Buffer.byteLength(html) }, title: titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : '', description: metas.find(m => m.name?.toLowerCase() === 'description')?.content || '', h1Count: [...text.matchAll(/<h1\b[^>]*>/gi)].length, linkCount: links.length, linksWithoutHref: links.filter(link => !link.href?.trim()).length };
+  const titleMatch = text.match(/<title(?=[\s/>])[^>]*>([\s\S]*?)<\/title\s*>/i);
+  const metas = [...text.matchAll(/<meta(?=[\s/>])[^>]*>/gi)].map(m => attrs(m[0]));
+  const links = [...text.matchAll(/<a(?=[\s/>])[^>]*>/gi)].map(m => attrs(m[0]));
+  return { schemaVersion: 1, kind: 'html_audit', source: { sha256: hash(html), bytes: Buffer.byteLength(html) }, title: titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : '', description: metas.find(m => m.name?.toLowerCase() === 'description')?.content || '', h1Count: [...text.matchAll(/<h1(?=[\s/>])[^>]*>/gi)].length, linkCount: links.length, linksWithoutHref: links.filter(link => !link.href?.trim()).length };
 }
 function htmlReport(data) {
   return '# Supplied HTML checks\n\n```json\n' + JSON.stringify(data, null, 2) + '\n```\n\nLimitations: bounded pattern checks of supplied HTML only; no URL was fetched. This is not a full SEO audit. Core Web Vitals, rendering, accessibility, search ranking and live-page behavior were not tested. HTML entities are not decoded and malformed markup may be counted imperfectly.\n\nHuman review and CEO approval are required.\n';
@@ -68,8 +69,8 @@ async function executeTool({ kind, brief = '', input = {}, provider, signal, onE
     const data = { schemaVersion: 1, kind: 'system_check', observedAt: new Date().toISOString(), nodeVersion: process.version, platform: process.platform, architecture: process.arch, pid: process.pid };
     result = { files: [jsonFile('system.json', data), markdownFile(systemReport(data))], evidence: { tool: 'local-node-inventory-v1', snapshotHash: hash(JSON.stringify(data)), observedAt: data.observedAt, limitations: ['Current process inventory only; no overall health or security conclusion'] } };
   } else if (kind === 'ai_draft') {
-    boundedText(brief, 'Brief', 10000);
-    const context = boundedText(input.context, 'Context', 100000);
+    boundedText(brief, 'Brief', MAX_BRIEF_BYTES);
+    const context = boundedText(input.context, 'Context', MAX_CONTEXT_BYTES);
     if (!provider || typeof provider.generate !== 'function') throw new Error('An explicitly configured and probed local AI provider is required');
     const generated = await provider.generate({ brief, context, signal });
     checkSignal(signal);

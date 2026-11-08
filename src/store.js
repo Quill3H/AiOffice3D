@@ -22,6 +22,8 @@ class Store {
         if(stat)fs.chmodSync(file,0o600);
       }
       this.db=new DatabaseSync(dbFile);
+      const version=this.db.prepare('PRAGMA user_version').get().user_version;
+      if(version>1)throw new Error('Workspace schema version is newer than this runtime supports');
       this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=3000;
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, body TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT, body TEXT NOT NULL);

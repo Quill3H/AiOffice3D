@@ -76,9 +76,10 @@ function createStudio({dataDir=process.env.STUDIO_DATA_DIR||path.join(ROOT,'.stu
        const address=req.socket.remoteAddress;const hits=loginAttempts.get(address)||{count:0,since:Date.now()};
        if(Date.now()-hits.since>60000){hits.count=0;hits.since=Date.now();}
        if(hits.count>=10)fail('Too many sign-in attempts. Retry in one minute.','RATE_LIMIT',429);
+       // Reserve synchronously, including requests whose body is still pending.
+       hits.count++;loginAttempts.set(address,hits);
        const {token}=await body(req);const role=secureEqual(token,adminToken)?'admin':secureEqual(token,readerToken)?'reader':null;
-       if(!role){hits.count++;loginAttempts.set(address,hits);fail('Invalid local key','UNAUTHORIZED',401);}
-       loginAttempts.delete(address);
+       if(!role)fail('Invalid local key','UNAUTHORIZED',401);
        // Bounded memory; signing in does not grant a durable capability across restarts.
        for(const [id,s] of sessions)if(s.expires<Date.now())sessions.delete(id);
        if(sessions.size>=100)fail('Session limit reached','RATE_LIMIT',429);

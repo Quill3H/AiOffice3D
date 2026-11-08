@@ -5,6 +5,7 @@ const crypto=require('node:crypto');
 const {EventEmitter}=require('node:events');
 const {executeSafely,auditSafely}=require('./work');
 const {LocalProvider}=require('./providers');
+const {MAX_CONTEXT_BYTES}=require('./limits');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 const now=()=>new Date().toISOString();
@@ -51,6 +52,7 @@ class Engine extends EventEmitter {
    for(const [k,v] of Object.entries(input)) if(typeof v!=='string'||v.length>500000) fail('Input values must be bounded text: '+k);
    if(kind==='auto') kind=input.csv?'data_analysis':input.html?'html_audit':/\b(runtime|system check|health)\b|kiểm tra hệ thống/i.test(brief)?'system_check':'ai_draft';
    if(!['data_analysis','html_audit','system_check','ai_draft'].includes(kind)) fail('Unsupported task kind');
+   if(kind==='ai_draft'&&typeof input.context==='string'&&Buffer.byteLength(input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
    if(providerId&&providerId!=='local-ai') fail('Unsupported provider');
    if(input.agentId&&!CATALOG.some(a=>a[0]===input.agentId&&a[0]!=='qc'&&a[0]!=='manager')) fail('Unsupported specialist');
    const request={brief:brief.trim(),kind,input,providerId:providerId||null};const fingerprint=hash(canonical(request));
@@ -163,6 +165,7 @@ class Engine extends EventEmitter {
    if(t.kind==='data_analysis'&&!t.input.csv?.trim()||t.kind==='html_audit'&&!t.input.html?.trim())fail('Missing input: create a new task with the required data');
    if(t.kind==='ai_draft'&&this.provider.status().status!=='CONNECTED')fail('Provider not connected','PROVIDER_UNAVAILABLE',409);
    if(t.kind==='ai_draft'&&!t.input.context?.trim())fail('Missing context: create a new task with source material');
+   if(t.kind==='ai_draft'&&Buffer.byteLength(t.input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
    t.status='QUEUED';t.error=null;t.updatedAt=now();this.store.save(t,{type:'RETRY_QUEUED',message:'CEO đã yêu cầu lượt thực thi mới; giữ toàn bộ phiên bản cũ.',agentId:'manager'},{key,fingerprint});
    this.emit('change');this.schedule();return this.get(id);
  }

@@ -61,15 +61,15 @@ function expectedCsvReport(data) {
 }
 function recomputeHtml(source) {
   if (typeof source !== 'string' || !source.trim() || Buffer.byteLength(source) > 500 * 1024) throw new Error('HTML input missing or outside size limit');
-  const clean = source.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
-  const tags = [...clean.matchAll(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi)];
+  const clean = source.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)(?=[\s/>])[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
+  const tags = [...clean.matchAll(/<\/?([a-z][a-z0-9:_-]*)(?=[\s/>])[^>]*>/gi)];
   const attr = tag => {
     const values = {};
     for (const match of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g)) values[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4];
     return values;
   };
   const opening = name => tags.filter(tag => tag[1].toLowerCase() === name && !tag[0].startsWith('</'));
-  const title = clean.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
+  const title = clean.match(/<title(?=[\s/>])[^>]*>([\s\S]*?)<\/title\s*>/i);
   const description = opening('meta').map(tag => attr(tag[0])).find(meta => meta.name?.toLowerCase() === 'description');
   const links = opening('a').map(tag => attr(tag[0]));
   return { schemaVersion: 1, kind: 'html_audit', source: { sha256: hash(source), bytes: Buffer.byteLength(source) }, title: title ? title[1].replace(/<[^>]*>/g, '').trim() : '', description: description?.content || '', h1Count: opening('h1').length, linkCount: links.length, linksWithoutHref: links.filter(link => !link.href?.trim()).length };
@@ -107,7 +107,9 @@ async function audit({ kind, brief = '', input = {}, files = [], evidence = {}, 
     if (kind === 'data_analysis') {
       const expected = recomputeCsv(input.csv);
       source = mode === 'DETERMINISTIC_TOOL' && evidence.sourceHash === expected.source.sha256 && evidence.sourceBytes === expected.source.bytes && isDeepStrictEqual(parsed.source, expected.source);
-      data = isDeepStrictEqual(parsed, expected);
+      // JSON canonicalizes -0 to 0; independently computed statistics use the
+      // same persisted number semantics, without sharing the producer parser.
+      data = isDeepStrictEqual(parsed, JSON.parse(JSON.stringify(expected)));
       content = get('report.md') === expectedCsvReport(expected);
       limitations.push('CSV checks validate descriptive calculations only; data collection accuracy and business meaning require human review.');
     } else if (kind === 'html_audit') {
