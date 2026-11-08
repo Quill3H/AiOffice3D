@@ -104,4 +104,4 @@ class LocalProvider {
     }
   }
 }
-module.exports = { LocalProvider };
+module.exports = { LocalProvider, readBoundedJson, requireText };

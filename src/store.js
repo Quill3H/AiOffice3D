@@ -23,15 +23,19 @@ class Store {
       }
       this.db=new DatabaseSync(dbFile);
       const version=this.db.prepare('PRAGMA user_version').get().user_version;
-      if(version>1)throw new Error('Workspace schema version is newer than this runtime supports');
+      if(version>2)throw new Error('Workspace schema version is newer than this runtime supports');
       this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=3000;
+        CREATE TABLE IF NOT EXISTS runtime_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1), pid INTEGER NOT NULL, id TEXT NOT NULL);`);
+      this.acquire();
+      this.transaction(()=>this.db.exec(`
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, body TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT, body TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS operations(key TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, task_id TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS runtime_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1), pid INTEGER NOT NULL, id TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS artifact_reservations(attempt_id TEXT PRIMARY KEY, bytes INTEGER NOT NULL);
-        PRAGMA user_version=1;`);
-      this.acquire();
+        CREATE TABLE IF NOT EXISTS provider_calls(id TEXT PRIMARY KEY, task_id TEXT NOT NULL, attempt_id TEXT NOT NULL, phase TEXT NOT NULL, provider_id TEXT NOT NULL, model TEXT NOT NULL, status TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, usage TEXT, UNIQUE(attempt_id,phase,provider_id));
+        PRAGMA user_version=2;`));
+      this.db.exec("UPDATE provider_calls SET status='UNKNOWN' WHERE status='RESERVED'");
       this.db.exec("INSERT OR IGNORE INTO artifact_reservations(attempt_id,bytes) SELECT '_baseline',coalesce(sum(json_extract(a.value,'$.size')),0) FROM tasks t,json_each(t.body,'$.artifacts') a");
       for(const name of ['studio.sqlite','studio.sqlite-wal','studio.sqlite-shm'])if(fs.existsSync(path.join(this.dir,name)))fs.chmodSync(path.join(this.dir,name),0o600);
     } catch(error) { this.release();this.db?.close();throw error; }
@@ -64,6 +68,25 @@ class Store {
     });
   }
   operation(key) { return this.db.prepare('SELECT fingerprint,task_id FROM operations WHERE key=?').get(key); }
+  reserveProviderCall({taskId,attemptId,phase,providerId,model},limit){
+    if(![taskId,attemptId,phase,providerId,model].every(v=>typeof v==='string'&&v.length>0&&v.length<=200))throw new Error('Bounded provider call identity is required');
+    return this.transaction(()=>{
+      if(this.db.prepare('SELECT id FROM provider_calls WHERE attempt_id=? AND phase=? AND provider_id=?').get(attemptId,phase,providerId))throw new Error('Provider call already reserved; duplicate dispatch denied');
+      const used=this.db.prepare('SELECT count(*) AS n FROM provider_calls').get().n;
+      if(!Number.isSafeInteger(limit)||limit<1||used>=limit)throw new Error('Remote provider call budget exhausted');
+      const id='call-'+crypto.randomUUID();
+      this.db.prepare("INSERT INTO provider_calls(id,task_id,attempt_id,phase,provider_id,model,status,started_at) VALUES(?,?,?,?,?,?,'RESERVED',?)").run(id,taskId,attemptId,phase,providerId,model,new Date().toISOString());
+      return id;
+    });
+  }
+  finishProviderCall(id,status,usage){
+    if(!['SUCCEEDED','FAILED'].includes(status))throw new Error('Invalid provider call outcome');
+    this.db.prepare("UPDATE provider_calls SET status=?,finished_at=?,usage=? WHERE id=? AND status='RESERVED'").run(status,new Date().toISOString(),usage?JSON.stringify(usage):null,id);
+  }
+  providerCalls(taskId){
+    const rows=taskId?this.db.prepare('SELECT * FROM provider_calls WHERE task_id=? ORDER BY rowid').all(taskId):this.db.prepare('SELECT * FROM provider_calls ORDER BY rowid').all();
+    return rows.map(({usage,...row})=>({...row,usage:usage?JSON.parse(usage):null}));
+  }
   save(task,event,operation) {
     return this.transaction(()=>{
       this.db.prepare('INSERT INTO tasks(id,body) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body').run(task.id,JSON.stringify(task));

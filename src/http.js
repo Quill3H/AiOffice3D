@@ -113,7 +113,7 @@ function createStudio({dataDir=process.env.STUDIO_DATA_DIR||path.join(ROOT,'.stu
        const historyMatch=pathname.match(/^\/api\/tasks\/(task-[a-f0-9-]{36})\/history$/);
        if(historyMatch&&req.method==='GET'){
          const task=engine.required(historyMatch[1]);
-         json(res,200,{events:store.events(task.id,1000),attempts:task.attempts});return;
+         json(res,200,{events:store.events(task.id,1000),attempts:task.attempts,providerCalls:store.providerCalls(task.id)});return;
        }
        const taskMatch=pathname.match(/^\/api\/tasks\/(task-[a-f0-9-]{36})\/(retry|cancel|review)$/);
        if(taskMatch&&req.method==='POST'){
@@ -122,7 +122,9 @@ function createStudio({dataDir=process.env.STUDIO_DATA_DIR||path.join(ROOT,'.stu
          json(res,200,result);return;
        }
        if(pathname==='/api/providers/probe'&&req.method==='POST'){
-         await body(req);await engine.provider.probe();const health=engine.provider.status();
+         const data=await body(req);
+         if(Object.keys(data).some(k=>k!=='providerId')||data.providerId!==undefined&&(typeof data.providerId!=='string'||!(engine.provider.supports?engine.provider.supports(data.providerId):data.providerId==='local-ai')))fail('Unknown provider probe fields or provider');
+         await engine.provider.probe(data.providerId);const health=engine.provider.status(data.providerId);
          store.recordEvent({type:'PROVIDER_PROBED',message:'Kiểm tra provider: '+health.status,provider:health});
          engine.emit('change');json(res,200,health);return;
        }

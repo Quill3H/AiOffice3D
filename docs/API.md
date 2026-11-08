@@ -17,3 +17,25 @@ Local limits: 50 queued/running tasks, 500 stored tasks, 20 attempts per task, 1
 `GET /api/artifacts/:id` downloads authenticated attachment. `GET /api/artifacts/:id?preview=1` sends text/plain for safe preview. `GET /api/events` authenticated SSE (`state` event on committed changes, keepalive); reconnect via GET state. `POST /api/providers/probe {}` probes only explicitly configured loopback endpoint. No paid provider call. `GET /api/legacy/:key` reads fixed read-only legacy documents; no path query. Legacy execution/bridge APIs return 410.
 
 Agent IDs: manager, seo, content, video, design, development, qc, finance, advertising. Status vocabulary: QUEUED, RUNNING, BLOCKED, INTERRUPTED, FAILED, CANCELLED, NEEDS_REVISION, AWAITING_APPROVAL, DONE. No estimated progress percentage; render completed steps and event times.
+
+## Gateway extension (09 November 2026)
+
+The default provider route is `local-ai,muse,kimi`. `POST /api/providers/probe {providerId?}` probes the selected configured endpoint's model listing (default: first route member); it does **not** prove generation permission, billing or free quota. Unknown fields/provider IDs return 400. Existing local adapters whose probe returns void remain supported. `GET /api/state` lists every route member and `providerBudget`; task history additionally returns `providerCalls` with sanitized dispatch status/usage. No API key is returned or accepted in task/probe payloads.
+
+Operator environment configuration (restart required):
+
+| Provider | Model | Credential | Endpoint |
+| --- | --- | --- | --- |
+| local-ai | STUDIO_AI_MODEL | none | STUDIO_AI_BASE_URL, exact loopback |
+| muse | STUDIO_MUSE_MODEL | META_MODEL_API_KEY | fixed https://api.meta.ai/v1 |
+| kimi | STUDIO_KIMI_MODEL | MOONSHOT_API_KEY | STUDIO_KIMI_BASE_URL: https://api.moonshot.ai/v1 or https://api.moonshot.cn/v1 |
+
+`STUDIO_PROVIDER_ORDER` is a comma-separated list of 1–3 unique IDs. No model is selected automatically. Credentials belong in private process configuration, never Git or chat. Use `providerId` on a task to prefer a configured route member. Only a fresh explicit probe (60s) enables dispatch. Response model must equal requested model, completion must finish with stop, output is bounded, redirects/tool calls are rejected.
+
+**Zero-spend policy:** `STUDIO_REMOTE_CALL_LIMIT` defaults to 0 (integer 0–1000), is a lifetime workspace dispatch cap, and is not a monetary billing guarantee. Remote dispatch additionally requires per-provider operator-verified free entitlement for the exact configured model: `STUDIO_MUSE_FREE_QUOTA_EVIDENCE_URL` and `STUDIO_MUSE_FREE_QUOTA_UNTIL` (or KIMI equivalents). This is an operator attestation, not application verification of the provider account; public budget explicitly states `billingVerifiedByApplication:false`. Leave the cap at 0 unless the CEO has verified an actually free allowance and authorized use. A paid balance or web subscription is insufficient. No free allowance was verified in this implementation session; cloud generation remains disabled.
+
+Each remote attempt is reserved in SQLite before dispatch. SUCCEEDED, FAILED and startup UNKNOWN reservations all consume the cap. A unique attempt/phase/provider tuple cannot dispatch again; a deliberate task retry creates a new attempt but still consumes the same workspace cap. Transport errors, 408,429,5xx and timeouts may advance to another already-probed provider once (maximum3 total providers), subject to that provider's own quota evidence and remaining cap. Caller cancellation, budget denial, malformed output/model mismatch and non-transient HTTP errors do not fall back. No background retry or auto-probe.
+
+Schema2 is an additive migration for the provider ledger; newer versions fail before migration. Do not open schema2 data with an older unchecked runtime. Accepted AI context is <=100000 UTF-8 bytes; execution brief uses the shared 82000-byte bound to cover the existing 12000-character brief plus 8000-character CEO revision. Sign-in is bounded to10 attempts/minute/address including pending bodies and successful attempts.
+
+Primary adapter contracts: [Meta Model API](https://dev.meta.ai/docs/overview), [Kimi API account/key distinctions](https://www.kimi.ai/help/kimi-api/api-troubleshooting). Muse consumer access does not itself demonstrate access to these API endpoints.

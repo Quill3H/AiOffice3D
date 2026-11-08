@@ -4,7 +4,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {EventEmitter}=require('node:events');
 const {executeSafely,auditSafely}=require('./work');
-const {LocalProvider}=require('./providers');
+const {createGateway}=require('./gateway-config');
 const {MAX_CONTEXT_BYTES}=require('./limits');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
@@ -23,7 +23,7 @@ const CATALOG=[
 ];
 class Engine extends EventEmitter {
  constructor({store,provider,execute=executeSafely,inspect=auditSafely,concurrency=2,timeoutMs=120000,autoStart=true,maxQueued=50,maxTasks=500,maxArtifactBytes=100*1024*1024}) {
-   super();this.store=store;this.provider=provider||new LocalProvider();this.execute=execute;this.inspect=inspect;
+   super();this.store=store;this.provider=provider||createGateway(store);this.execute=execute;this.inspect=inspect;
    this.concurrency=Math.min(4,Math.max(1,concurrency));this.timeoutMs=timeoutMs;this.autoStart=autoStart;
    this.maxQueued=maxQueued;this.maxTasks=maxTasks;this.maxArtifactBytes=maxArtifactBytes;
    this.active=new Map();this.maxObservedActive=0;this.closed=false;
@@ -53,7 +53,7 @@ class Engine extends EventEmitter {
    if(kind==='auto') kind=input.csv?'data_analysis':input.html?'html_audit':/\b(runtime|system check|health)\b|kiểm tra hệ thống/i.test(brief)?'system_check':'ai_draft';
    if(!['data_analysis','html_audit','system_check','ai_draft'].includes(kind)) fail('Unsupported task kind');
    if(kind==='ai_draft'&&typeof input.context==='string'&&Buffer.byteLength(input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
-   if(providerId&&providerId!=='local-ai') fail('Unsupported provider');
+   if(providerId&&(typeof providerId!=='string'||!(this.provider.supports?this.provider.supports(providerId):providerId==='local-ai'))) fail('Unsupported provider');
    if(input.agentId&&!CATALOG.some(a=>a[0]===input.agentId&&a[0]!=='qc'&&a[0]!=='manager')) fail('Unsupported specialist');
    const request={brief:brief.trim(),kind,input,providerId:providerId||null};const fingerprint=hash(canonical(request));
    const previous=this.checkOperation(key,fingerprint);
@@ -63,7 +63,7 @@ class Engine extends EventEmitter {
    const issues=[];
    if(kind==='data_analysis'&&!input.csv?.trim()) issues.push('Cần cung cấp CSV để tính số liệu.');
    if(kind==='html_audit'&&!input.html?.trim()) issues.push('Cần cung cấp HTML; ứng dụng không tự truy cập URL.');
-   if(kind==='ai_draft'&&this.provider.status().status!=='CONNECTED') issues.push('Chưa có model local đã kết nối và xác minh.');
+   if(kind==='ai_draft'&&this.provider.status(providerId).status!=='CONNECTED') issues.push('Chưa có model được cấu hình và probe còn hiệu lực.');
    if(kind==='ai_draft'&&!input.context?.trim())issues.push('Cần cung cấp ngữ cảnh và căn cứ để model viết bản nháp.');
    const t={id:'task-'+crypto.randomUUID(),...request,status:issues.length?'BLOCKED':'QUEUED',steps:[],attempts:[],artifacts:[],version:0,qc:null,approval:null,revision:null,error:issues.join(' ')||null,createdAt:now(),updatedAt:now()};
    this.store.save(t,{type:issues.length?'BLOCKED':'TASK_CREATED',message:issues.join(' ')||'CEO đã giao việc; kế hoạch theo rule engine sẽ chạy trong hàng đợi.',agentId:'manager'},{key,fingerprint});
@@ -96,7 +96,8 @@ class Engine extends EventEmitter {
  async run(id,controller){
    let task=this.required(id);if(task.status!=='QUEUED')return;
    task.version++;task.status='RUNNING';task.error=null;task.qc=null;task.approval=null;task.steps=this.plan(task);
-   const attempt={id:'attempt-'+crypto.randomUUID(),number:task.version,status:'RUNNING',startedAt:now(),mode:task.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL',provider:task.kind==='ai_draft'?'local-ai':null,model:task.kind==='ai_draft'?this.provider.status().model:null};
+   const selected=this.provider.status(task.providerId);
+   const attempt={id:'attempt-'+crypto.randomUUID(),number:task.version,status:'RUNNING',startedAt:now(),mode:task.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL',provider:task.kind==='ai_draft'?selected.id||'local-ai':null,model:task.kind==='ai_draft'?selected.model:null};
    task.attempts.push(attempt);this.change(task,'ATTEMPT_STARTED','Bắt đầu lượt thực thi '+task.version,{agentId:'manager'});
    let timer;
    const budget=new Promise((_,reject)=>{
@@ -112,7 +113,8 @@ class Engine extends EventEmitter {
    try {
      step(0,'RUNNING');
      const executedBrief=task.brief+(task.revision?'\nYêu cầu sửa từ CEO: '+task.revision.comment:'');
-     const result=await Promise.race([this.execute({kind:task.kind,brief:executedBrief,input:task.input,provider:this.provider,signal:controller.signal,onEvent:event=>{if(!controller.signal.aborted&&this.required(id).status==='RUNNING')this.change(this.required(id),'TOOL_EVENT',String(event?.message||event).slice(0,2000),{agentId:task.steps[0].agentId});}}),budget]);
+     const provider=this.provider.scope?this.provider.scope({providerId:task.providerId,call:{taskId:id,attemptId:attempt.id,phase:'execute'}}):this.provider;
+     const result=await Promise.race([this.execute({kind:task.kind,brief:executedBrief,input:task.input,provider,signal:controller.signal,onEvent:event=>{if(!controller.signal.aborted&&this.required(id).status==='RUNNING')this.change(this.required(id),'TOOL_EVENT',String(event?.message||event).slice(0,2000),{agentId:task.steps[0].agentId});}}),budget]);
      assertActive();step(0,'DONE');step(1,'RUNNING');
      if(!result||!Array.isArray(result.files)||!result.files.length||result.files.length>10)throw new Error('Tool did not produce deliverable files');
      let directory=this.store.dir;
@@ -163,7 +165,7 @@ class Engine extends EventEmitter {
    if(t.attempts.length>=20)fail('Attempt limit reached','LIMIT',409);
    if(this.store.tasks().filter(t=>['QUEUED','RUNNING'].includes(t.status)).length>=this.maxQueued)fail('Queue limit reached','LIMIT',429);
    if(t.kind==='data_analysis'&&!t.input.csv?.trim()||t.kind==='html_audit'&&!t.input.html?.trim())fail('Missing input: create a new task with the required data');
-   if(t.kind==='ai_draft'&&this.provider.status().status!=='CONNECTED')fail('Provider not connected','PROVIDER_UNAVAILABLE',409);
+   if(t.kind==='ai_draft'&&this.provider.status(t.providerId).status!=='CONNECTED')fail('Provider not connected','PROVIDER_UNAVAILABLE',409);
    if(t.kind==='ai_draft'&&!t.input.context?.trim())fail('Missing context: create a new task with source material');
    if(t.kind==='ai_draft'&&Buffer.byteLength(t.input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
    t.status='QUEUED';t.error=null;t.updatedAt=now();this.store.save(t,{type:'RETRY_QUEUED',message:'CEO đã yêu cầu lượt thực thi mới; giữ toàn bộ phiên bản cũ.',agentId:'manager'},{key,fingerprint});
@@ -204,7 +206,7 @@ class Engine extends EventEmitter {
    const tasks=this.store.tasks().map(t=>this.publicTask(t));const provider=this.provider.status();
    const agents=CATALOG.map(([id,name,department,mode,tools,description])=>({id,name,department,mode,tools,description,capabilities:tools,limitations:[description],status:tasks.some(t=>t.status==='RUNNING'&&t.steps.some(s=>s.agentId===id&&s.status==='RUNNING'))?'WORKING':mode==='AI_PROVIDER'&&provider.status!=='CONNECTED'?'UNAVAILABLE':'AVAILABLE'}));
    const events=this.store.events();
-   return {version:'4.0.0',revision:events.at(-1)?.id||0,agents,tasks,artifacts:tasks.flatMap(t=>t.artifacts),events,providers:[provider,{id:'legacy-bridge',name:'ChatGPT Web Bridge (cũ)',kind:'LEGACY_WEB_BRIDGE',status:'DISABLED',error:'Chưa có adapter ghép cặp an toàn; không phải API chính thức.'}],connectors:[{id:'external-tools',name:'MCP / dịch vụ ngoài',status:'NOT_CONNECTED',detail:'Công cụ của phiên Codex không tự động được cấp cho ứng dụng.'}],metrics:{running:tasks.filter(t=>t.status==='RUNNING').length,queued:tasks.filter(t=>t.status==='QUEUED').length,awaitingApproval:tasks.filter(t=>t.status==='AWAITING_APPROVAL').length,done:tasks.filter(t=>t.status==='DONE').length,total:tasks.length}};
+   return {version:'4.0.0',revision:events.at(-1)?.id||0,agents,tasks,artifacts:tasks.flatMap(t=>t.artifacts),events,providers:[...(this.provider.statuses?this.provider.statuses():[provider]),{id:'legacy-bridge',name:'ChatGPT Web Bridge (cũ)',kind:'LEGACY_WEB_BRIDGE',status:'DISABLED',error:'Chưa có adapter ghép cặp an toàn; không phải API chính thức.'}],providerBudget:this.provider.budget?.()||null,connectors:[{id:'external-tools',name:'MCP / dịch vụ ngoài',status:'NOT_CONNECTED',detail:'Công cụ của phiên Codex không tự động được cấp cho ứng dụng.'}],metrics:{running:tasks.filter(t=>t.status==='RUNNING').length,queued:tasks.filter(t=>t.status==='QUEUED').length,awaitingApproval:tasks.filter(t=>t.status==='AWAITING_APPROVAL').length,done:tasks.filter(t=>t.status==='DONE').length,total:tasks.length}};
  }
  async close(){
    if(this.closed)return;this.closed=true;
