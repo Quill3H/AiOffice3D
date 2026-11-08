@@ -1,5 +1,7 @@
 # Văn Phòng AI Studio — design system
 
+Backend extension note (09 November 2026): gateway health can list local/Muse/Kimi; labels must say configured model rather than claim every AI call is local. The sourced_brief compose form and binary previews are deferred. Existing detail/history/source views can inspect API-created source tasks; no office-layout redesign belongs to this remediation.
+
 ## Direction and surface
 
 The authenticated application is **Operate** mode. Its cultural reference is a quiet studio office in daylight: pale walls, neutral timber desks, navy structural edges, muted foliage and a calm working rhythm. The office itself is the main visual identity. Standard forms, task lanes, tables, timelines and native dialogs make the real work predictable.

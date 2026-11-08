@@ -26,3 +26,15 @@ test('real SIGKILL process crash recovers SQLite and retries same task without o
  const final=new Engine({store:new Store(dir)});t.after(()=>final.close());
  assert.equal(final.get(message.id).status,'DONE');assert.ok(final.readArtifact(task.artifacts[0].id).content.length);
 });
+
+test('real SIGKILL during a source handoff preserves plan and unknown cloud reservation without auto replay',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'studio-source-crash-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const child=fork(path.join(__dirname,'fixtures','sourced-crash-child.cjs'),[],{env:{...process.env,STUDIO_CRASH_DIR:dir},execArgv:[],stdio:['ignore','ignore','pipe','ipc']});
+ t.after(()=>{if(child.exitCode===null)child.kill('SIGKILL');});
+ const [message]=await once(child,'message');assert.equal(message.status,'RUNNING');assert.equal(message.plan.steps[0].id,'extract');assert.deepEqual(message.calls,['SUCCEEDED','RESERVED']);
+ const exit=once(child,'exit');child.kill('SIGKILL');await exit;
+ const engine=new Engine({store:new Store(dir),autoStart:false});t.after(()=>engine.close());
+ const task=engine.get(message.id);assert.equal(task.status,'INTERRUPTED');assert.equal(task.attempts.length,1);
+ assert.equal(task.attempts[0].plan.steps[0].id,'extract');assert.deepEqual(engine.store.providerCalls().map(c=>c.status),['SUCCEEDED','UNKNOWN']);
+ assert.equal(task.artifacts.length,0);assert.equal(engine.active.size,0);assert.equal(task.approval,null);
+});

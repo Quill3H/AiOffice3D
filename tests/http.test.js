@@ -15,6 +15,25 @@ async function setup(t,options={}){
  const call=(route,options={})=>fetch(base+route,{...options,headers:{Authorization:'Bearer '+admin,...options.headers}});
  return {studio,base,admin,reader,call};
 }
+test('authenticated sourced-brief API persists source/history and waits for explicit current-version approval (protocol double)',async t=>{
+ const plan={steps:[{id:'extract',agentId:'content',title:'Extract evidence',dependsOn:[]}]};
+ let calls=0;const provider={status:()=>({id:'local-ai',status:'CONNECTED',model:'http-protocol-double'}),generate:async args=>{
+   calls++;return {provider:'local-ai',model:'http-protocol-double',text:JSON.stringify(args.phase==='manager'?plan:{claims:[{sourceId:'s1',quote:'Synthetic source has value 42.'}]})};
+ }};
+ const {call,studio}=await setup(t,{provider});
+ const payload={kind:'sourced_brief',brief:'Produce a sourced brief for CEO to review',input:{sources:[{id:'s1',title:'Synthetic HTTP fixture',url:'https://example.org/fixture',text:'Synthetic source has value 42.'}]}};
+ const create=()=>call('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':'source-http'},body:JSON.stringify(payload)});
+ const response=await create();assert.equal(response.status,202);const created=await response.json();
+ const finished=new Promise(resolve=>{const check=()=>{const task=studio.engine.get(created.id);if(!['QUEUED','RUNNING'].includes(task.status)){studio.engine.off('change',check);resolve(task);}};studio.engine.on('change',check);check();});
+ assert.equal((await (await create()).json()).id,created.id);
+ const task=await finished;assert.equal(task.status,'AWAITING_APPROVAL',task.error);assert.equal(calls,2);
+ const history=await (await call('/api/tasks/'+task.id+'/history')).json();
+ assert.equal(history.attempts[0].plan.steps[0].id,'extract');assert.ok(history.events.some(e=>e.type==='PLAN_READY'));
+ assert.deepEqual((await (await call('/api/tasks/'+task.id+'/source')).json()).input.sources,payload.input.sources);
+ const artifact=await call('/api/artifacts/'+task.artifacts[2].id+'?preview=1');assert.ok((await artifact.text()).includes('Synthetic source has value 42.'));
+ assert.equal((await call('/api/tasks/'+task.id+'/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve',version:1})})).status,200);
+ assert.equal(studio.engine.get(task.id).status,'DONE');
+});
 test('anonymous business data is denied, security headers applied and bridge disabled',async t=>{
  const {base,call}=await setup(t);
  const unauth=await fetch(base+'/api/state');assert.equal(unauth.status,401);

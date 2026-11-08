@@ -58,7 +58,7 @@ class ProviderGateway {
  statuses(){return [...this.providers.values()].map(p=>p.status());}
  budget(){const used=this.store.providerCalls().length;return {limit:this.remoteCallLimit,reserved:used,remaining:Math.max(0,this.remoteCallLimit-used),policy:'ZERO_SPEND_REQUIRES_OPERATOR_VERIFIED_FREE_QUOTA',billingVerifiedByApplication:false};}
  async probe(id){const provider=this.providers.get(id||this.providers.keys().next().value);if(!provider)throw new Error('Unknown provider');return provider.probe();}
- scope({providerId,call}={}){return {status:()=>this.status(providerId),generate:args=>this.generate({...args,providerId,call})};}
+ scope({providerId,call}={}){return {status:()=>this.status(providerId),generate:args=>this.generate({...args,providerId,call:{...call,phase:args.phase||call?.phase}})};}
  _freeEligible(providerId,model){
    const quota=this.freeQuota?.[providerId];
    try{const url=new URL(quota.evidenceUrl);return quota.model===model&&url.protocol==='https:'&&!url.username&&!url.password&&Number.isFinite(Date.parse(quota.expiresAt))&&Date.parse(quota.expiresAt)>this.nowMs();}catch{return false;}

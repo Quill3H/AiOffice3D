@@ -6,12 +6,13 @@ const {EventEmitter}=require('node:events');
 const {executeSafely,auditSafely}=require('./work');
 const {createGateway}=require('./gateway-config');
 const {MAX_CONTEXT_BYTES}=require('./limits');
+const {validateSources}=require('./sourced-brief');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 const now=()=>new Date().toISOString();
 function fail(message,code='INVALID_REQUEST',status=400) {const e=new Error(message);e.code=code;e.status=status;throw e;}
 const CATALOG=[
- ['manager','Trưởng phòng điều phối','Điều phối','RULE_ENGINE',['route_brief','dependency_queue'],'Định tuyến theo dữ liệu được cung cấp; không nhận là suy luận AI.'],
+ ['manager','Trưởng phòng điều phối','Điều phối','HYBRID',['route_brief','dependency_queue','bounded_model_plan'],'Định tuyến bằng rule; sourced_brief có kế hoạch model tối đa 3 bước khi provider đã probe.'],
  ['finance','Chuyên viên Dữ liệu & Tài chính','Dữ liệu','DETERMINISTIC_TOOL',['csv_statistics'],'Tính thống kê CSV thực; không dự báo hay tư vấn đầu tư.'],
  ['content','Chuyên viên Nội dung','Nội dung','DETERMINISTIC_TOOL',['evidence_report','ai_draft'],'Báo cáo từ dữ liệu; viết sáng tạo cần provider.'],
  ['seo','Chuyên viên SEO & AI Search','Tăng trưởng','DETERMINISTIC_TOOL',['html_audit','ai_draft'],'Kiểm tra HTML đã cung cấp; chưa crawl, đo Core Web Vitals hay audit toàn site.'],
@@ -48,10 +49,16 @@ class Engine extends EventEmitter {
    let {brief,kind='auto',input={},providerId}=payload;
    if(typeof brief!=='string'||brief.trim().length<8||brief.length>12000) fail('Brief must contain 8–12000 characters');
    if(!input||typeof input!=='object'||Array.isArray(input)) fail('Input must be an object');
-   if(Object.keys(input).some(k=>!['csv','html','context','agentId'].includes(k))) fail('Unknown input field; file paths and URLs are not accepted');
-   for(const [k,v] of Object.entries(input)) if(typeof v!=='string'||v.length>500000) fail('Input values must be bounded text: '+k);
+   if(kind==='auto'&&input.sources)kind='sourced_brief';
+   if(kind==='sourced_brief'){
+     if(Object.keys(input).some(k=>k!=='sources'))fail('Unknown source input field');
+     try{validateSources(input.sources);}catch(error){fail(error.message);}
+   }else{
+     if(Object.keys(input).some(k=>!['csv','html','context','agentId'].includes(k))) fail('Unknown input field; file paths and URLs are not accepted');
+     for(const [k,v] of Object.entries(input)) if(typeof v!=='string'||v.length>500000) fail('Input values must be bounded text: '+k);
+   }
    if(kind==='auto') kind=input.csv?'data_analysis':input.html?'html_audit':/\b(runtime|system check|health)\b|kiểm tra hệ thống/i.test(brief)?'system_check':'ai_draft';
-   if(!['data_analysis','html_audit','system_check','ai_draft'].includes(kind)) fail('Unsupported task kind');
+   if(!['data_analysis','html_audit','system_check','ai_draft','sourced_brief'].includes(kind)) fail('Unsupported task kind');
    if(kind==='ai_draft'&&typeof input.context==='string'&&Buffer.byteLength(input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
    if(providerId&&(typeof providerId!=='string'||!(this.provider.supports?this.provider.supports(providerId):providerId==='local-ai'))) fail('Unsupported provider');
    if(input.agentId&&!CATALOG.some(a=>a[0]===input.agentId&&a[0]!=='qc'&&a[0]!=='manager')) fail('Unsupported specialist');
@@ -63,7 +70,7 @@ class Engine extends EventEmitter {
    const issues=[];
    if(kind==='data_analysis'&&!input.csv?.trim()) issues.push('Cần cung cấp CSV để tính số liệu.');
    if(kind==='html_audit'&&!input.html?.trim()) issues.push('Cần cung cấp HTML; ứng dụng không tự truy cập URL.');
-   if(kind==='ai_draft'&&this.provider.status(providerId).status!=='CONNECTED') issues.push('Chưa có model được cấu hình và probe còn hiệu lực.');
+   if(['ai_draft','sourced_brief'].includes(kind)&&this.provider.status(providerId).status!=='CONNECTED') issues.push('Chưa có model được cấu hình và probe còn hiệu lực.');
    if(kind==='ai_draft'&&!input.context?.trim())issues.push('Cần cung cấp ngữ cảnh và căn cứ để model viết bản nháp.');
    const t={id:'task-'+crypto.randomUUID(),...request,status:issues.length?'BLOCKED':'QUEUED',steps:[],attempts:[],artifacts:[],version:0,qc:null,approval:null,revision:null,error:issues.join(' ')||null,createdAt:now(),updatedAt:now()};
    this.store.save(t,{type:issues.length?'BLOCKED':'TASK_CREATED',message:issues.join(' ')||'CEO đã giao việc; kế hoạch theo rule engine sẽ chạy trong hàng đợi.',agentId:'manager'},{key,fingerprint});
@@ -75,6 +82,11 @@ class Engine extends EventEmitter {
    if(old){if(old.fingerprint!==fingerprint) fail('Idempotency key reused with different request','IDEMPOTENCY_CONFLICT',409);return old.task_id;}
  }
  plan(t){
+   if(t.kind==='sourced_brief')return [
+     {id:'manager_plan',agentId:'manager',title:'Model manager lập kế hoạch có giới hạn',dependsOn:[],mode:'AI_PROVIDER'},
+     {id:'publish',agentId:'content',title:'Đóng gói trích dẫn và nguồn',dependsOn:['manager_plan'],mode:'DETERMINISTIC_TOOL'},
+     {id:'qc',agentId:'qc',title:'QC độc lập đối chiếu từng trích dẫn',dependsOn:['publish'],mode:'DETERMINISTIC_TOOL'}
+   ].map(s=>({...s,status:'QUEUED'}));
    const specialist={data_analysis:'finance',html_audit:'seo',system_check:'development',ai_draft:t.input.agentId||'content'}[t.kind];
    return [
      {id:'execute',agentId:specialist,title:{data_analysis:'Tính thống kê từ CSV',html_audit:'Kiểm tra HTML đã cung cấp',system_check:'Đọc thông tin runtime',ai_draft:'Soạn bản nháp bằng model local'}[t.kind],dependsOn:[],mode:t.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL'},
@@ -97,7 +109,8 @@ class Engine extends EventEmitter {
    let task=this.required(id);if(task.status!=='QUEUED')return;
    task.version++;task.status='RUNNING';task.error=null;task.qc=null;task.approval=null;task.steps=this.plan(task);
    const selected=this.provider.status(task.providerId);
-   const attempt={id:'attempt-'+crypto.randomUUID(),number:task.version,status:'RUNNING',startedAt:now(),mode:task.kind==='ai_draft'?'AI_PROVIDER':'DETERMINISTIC_TOOL',provider:task.kind==='ai_draft'?selected.id||'local-ai':null,model:task.kind==='ai_draft'?selected.model:null};
+   const isAI=['ai_draft','sourced_brief'].includes(task.kind);
+   const attempt={id:'attempt-'+crypto.randomUUID(),number:task.version,status:'RUNNING',startedAt:now(),mode:isAI?'AI_PROVIDER':'DETERMINISTIC_TOOL',provider:isAI?selected.id||'local-ai':null,model:isAI?selected.model:null};
    task.attempts.push(attempt);this.change(task,'ATTEMPT_STARTED','Bắt đầu lượt thực thi '+task.version,{agentId:'manager'});
    let timer;
    const budget=new Promise((_,reject)=>{
@@ -110,12 +123,32 @@ class Engine extends EventEmitter {
      assertActive();task=this.required(id);const s=task.steps[index];s.status=status;s[status==='RUNNING'?'startedAt':'finishedAt']=now();
      this.change(task,'STEP_'+status,s.title,{agentId:s.agentId,stepId:s.id});
    };
+   const onStage=event=>{
+     assertActive();task=this.required(id);const current=task.attempts.at(-1);
+     if(event.type==='PLAN_READY'){
+       current.plan=event.plan;current.manager=event.provenance;current.handoffs=[];
+       const manager={...task.steps[0],status:'DONE',finishedAt:now()};
+       task.steps=[manager,...event.plan.steps.map(s=>({...s,dependsOn:s.dependsOn.length?s.dependsOn:['manager_plan'],status:'QUEUED',mode:'AI_PROVIDER'})),{id:'publish',agentId:'content',title:'Đóng gói trích dẫn và nguồn',dependsOn:[event.plan.steps.at(-1).id],status:'QUEUED',mode:'DETERMINISTIC_TOOL'},{id:'qc',agentId:'qc',title:'QC độc lập đối chiếu từng trích dẫn',dependsOn:['publish'],status:'QUEUED',mode:'DETERMINISTIC_TOOL'}];
+       this.change(task,'PLAN_READY','Manager đã lập kế hoạch; lưu checkpoint trước khi bàn giao.',{agentId:'manager',stepId:'manager_plan'});
+     }else if(event.type==='SPECIALIST_STARTED'){
+       const index=task.steps.findIndex(s=>s.id===event.stepId);
+       if(index<1||task.steps[index].dependsOn.some(dependency=>!task.steps.some(s=>s.id===dependency&&s.status==='DONE')))throw new Error('Specialist dependencies not completed');
+       step(index,'RUNNING');
+     }else if(event.type==='HANDOFF_READY'){
+       const s=task.steps.find(s=>s.id===event.handoff.stepId);
+       if(!s||s.status!=='RUNNING')throw new Error('Unexpected specialist handoff');
+       current.handoffs.push(event.handoff);s.status='DONE';s.finishedAt=now();
+       this.change(task,'HANDOFF_READY','Đã lưu handoff '+s.id+' và provenance.',{agentId:s.agentId,stepId:s.id});
+     }
+   };
    try {
      step(0,'RUNNING');
      const executedBrief=task.brief+(task.revision?'\nYêu cầu sửa từ CEO: '+task.revision.comment:'');
      const provider=this.provider.scope?this.provider.scope({providerId:task.providerId,call:{taskId:id,attemptId:attempt.id,phase:'execute'}}):this.provider;
-     const result=await Promise.race([this.execute({kind:task.kind,brief:executedBrief,input:task.input,provider,signal:controller.signal,onEvent:event=>{if(!controller.signal.aborted&&this.required(id).status==='RUNNING')this.change(this.required(id),'TOOL_EVENT',String(event?.message||event).slice(0,2000),{agentId:task.steps[0].agentId});}}),budget]);
-     assertActive();step(0,'DONE');step(1,'RUNNING');
+     const result=await Promise.race([this.execute({kind:task.kind,brief:executedBrief,input:task.input,provider,signal:controller.signal,onStage,onEvent:event=>{if(!controller.signal.aborted&&this.required(id).status==='RUNNING')this.change(this.required(id),'TOOL_EVENT',String(event?.message||event).slice(0,2000),{agentId:task.steps[0].agentId});}}),budget]);
+     assertActive();task=this.required(id);
+     const publishIndex=task.steps.length-2,qcIndex=task.steps.length-1;
+     if(task.kind!=='sourced_brief')step(0,'DONE');step(publishIndex,'RUNNING');
      if(!result||!Array.isArray(result.files)||!result.files.length||result.files.length>10)throw new Error('Tool did not produce deliverable files');
      let directory=this.store.dir;
      for(const segment of ['artifacts',task.id,attempt.id]){
@@ -140,10 +173,10 @@ class Engine extends EventEmitter {
      task=this.required(id);task.artifacts.push(...artifacts);
      const current=task.attempts.at(-1);current.mode=result.mode;current.provider=result.provider||null;current.model=result.model||null;current.usage=result.usage||null;current.evidence=result.evidence;
      this.change(task,'ARTIFACTS_CREATED','Đã lưu '+artifacts.length+' sản phẩm với mã SHA-256 theo phiên bản.',{agentId:'content'});
-     step(1,'DONE');step(2,'RUNNING');
+     step(publishIndex,'DONE');step(qcIndex,'RUNNING');
      const diskFiles=artifacts.map(a=>{const read=this.readArtifact(a.id);return {name:a.name,mime:a.mime,content:read.content.toString('utf8')};});
      const verdict=await Promise.race([this.inspect({kind:task.kind,brief:executedBrief,input:task.input,files:diskFiles,evidence:result.evidence,mode:result.mode,signal:controller.signal}),budget]);
-     assertActive();step(2,'DONE');task=this.required(id);task.qc=verdict;
+     assertActive();step(qcIndex,'DONE');task=this.required(id);task.qc=verdict;
      if(!verdict||!Array.isArray(verdict.checks)||!['PASS','NEEDS_REVISION'].includes(verdict.verdict))throw new Error('Invalid QC verdict');
      task.status=verdict.verdict==='PASS'?'AWAITING_APPROVAL':'NEEDS_REVISION';
      task.attempts.at(-1).qc=verdict;
@@ -165,7 +198,8 @@ class Engine extends EventEmitter {
    if(t.attempts.length>=20)fail('Attempt limit reached','LIMIT',409);
    if(this.store.tasks().filter(t=>['QUEUED','RUNNING'].includes(t.status)).length>=this.maxQueued)fail('Queue limit reached','LIMIT',429);
    if(t.kind==='data_analysis'&&!t.input.csv?.trim()||t.kind==='html_audit'&&!t.input.html?.trim())fail('Missing input: create a new task with the required data');
-   if(t.kind==='ai_draft'&&this.provider.status(t.providerId).status!=='CONNECTED')fail('Provider not connected','PROVIDER_UNAVAILABLE',409);
+   if(['ai_draft','sourced_brief'].includes(t.kind)&&this.provider.status(t.providerId).status!=='CONNECTED')fail('Provider not connected','PROVIDER_UNAVAILABLE',409);
+   if(t.kind==='sourced_brief')try{validateSources(t.input.sources);}catch(error){fail(error.message);}
    if(t.kind==='ai_draft'&&!t.input.context?.trim())fail('Missing context: create a new task with source material');
    if(t.kind==='ai_draft'&&Buffer.byteLength(t.input.context)>MAX_CONTEXT_BYTES)fail('Context exceeds UTF-8 byte size limit');
    t.status='QUEUED';t.error=null;t.updatedAt=now();this.store.save(t,{type:'RETRY_QUEUED',message:'CEO đã yêu cầu lượt thực thi mới; giữ toàn bộ phiên bản cũ.',agentId:'manager'},{key,fingerprint});

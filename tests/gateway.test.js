@@ -108,3 +108,20 @@ test('cloud timeout uses an actual abort deadline without fallback loops',async 
  const keepAlive=setTimeout(()=>{},1000);try{await assert.rejects(()=>p.generate(args),/timeout/i);}finally{clearTimeout(keepAlive);}
  assert.equal(p.status().status,'NOT_CONNECTED');
 });
+test('cloud protocol rejects truncation, tool calls, missing model, invalid JSON and oversized bodies',async()=>{
+ const responses=[
+   {model:'fixture-model',choices:[{message:{content:'Incomplete'},finish_reason:'length'}]},
+   {model:'fixture-model',choices:[{message:{content:'Execute'},finish_reason:'tool_calls'}]},
+   {choices:[{message:{content:'Unattributed'},finish_reason:'stop'}]},
+   'not JSON',
+   'x'.repeat(1024*1024+1)
+ ];
+ for(const response of responses){
+   const p=adapter('muse',async url=>new Response(url.endsWith('/models')?JSON.stringify({data:[{id:'fixture-model'}]}):typeof response==='string'?response:JSON.stringify(response)));
+   await p.probe();await assert.rejects(()=>p.generate(args),/protocol|model/i);
+ }
+});
+test('missing API credential never attempts a model probe',async()=>{
+ let requests=0;const p=new CloudProvider({id:'muse',baseUrl:'https://api.meta.ai/v1',model:'fixture-model',fetchImpl:async()=>{requests++;throw Error('Must not dispatch');}});
+ assert.equal((await p.probe()).status,'NOT_CONFIGURED');assert.equal(requests,0);
+});

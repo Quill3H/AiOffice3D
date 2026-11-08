@@ -2,6 +2,7 @@
 const path=require('node:path');
 const {Worker}=require('node:worker_threads');
 const {executeTool}=require('./tools');
+const {executeSourcedBrief}=require('./sourced-brief');
 function inWorker(action,payload,signal){
  signal?.throwIfAborted();
  return new Promise((resolve,reject)=>{
@@ -16,6 +17,7 @@ function inWorker(action,payload,signal){
  });
 }
 function executeSafely(args){
+ if(args.kind==='sourced_brief')return executeSourcedBrief(args);
  if(args.kind!=='html_audit')return executeTool(args);
  args.onEvent?.({message:'Kiểm tra HTML trong worker có giới hạn thời gian.'});
  return inWorker('execute',{kind:args.kind,brief:args.brief,input:args.input},args.signal);

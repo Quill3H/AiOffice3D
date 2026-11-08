@@ -1,5 +1,15 @@
 # Nghiệm thu kỹ thuật — 08/11/2026
 
+## Extension verified 09/11/2026 — isolated remediation branch
+
+Base f2d9034; branch codex/v4-audit-remediation. The historical47-test/browser evidence below remains historical. Current suite: **81 tests,81 pass,0 fail,0 skip**, Node22.23.4, logs /tmp/aioffice4-slice-verified.log. Source workflow is tested through actual loopback HTTP/SQLite/filesystem with labelled model protocol doubles; **no live Muse/Kimi/local inference and no verified free API quota**. No API expense.
+
+New acceptance evidence: six audit regressions; cloud allowlist/access/protocol/timeout/bounded fallback; persistent dispatch cap, concurrent reservation, startup UNKNOWN; manager plan schema/dependency rejection; literal-source QC rejecting fabricated quotes/citations; durable manager checkpoint; handoffs and ordered per-stage provenance; duplicate task/retry idempotency; queued source startup; source deadline/cancel; unchanged prior artifacts; two actual SIGKILL recovery tests. AWAITING_APPROVAL occurs before explicit current-version test approval; these automated approval requests are fixtures, not CEO business acceptance.
+
+`node scripts/demo-sourced-brief.cjs` independently produces plan.json, brief.json and report.md in a new temporary workspace, prints OFFLINE_PROTOCOL_DOUBLE_NOT_LIVE and leaves approval=null. Demo does not use real external research or a live model. Example fixture URLs identify synthetic evidence only.
+
+Deferred: API-only sourced_brief compose input; arbitrary DAG/parallel specialists; independent live semantic reviewer/retrieval/source authenticity; binary PNG/MP4 implementation (design in docs/design/BINARY_ARTIFACTS.md); capacity/long-duration stress and public deployment. UI changes only correct provider labels now that the gateway can be cloud-backed; layout and forms are preserved. No new visual/browser QA claimed.
+
 Phạm vi: bản nền tảng local v4 trên nhánh `codex/next-generation-office`, macOS **darwin x64**, Node **v22.23.4**. Đây là kiểm thử kỹ thuật của phiên phát triển, không thay mặt người dùng nghiệm thu sản phẩm nghiệp vụ.
 
 ## Kết quả tự động

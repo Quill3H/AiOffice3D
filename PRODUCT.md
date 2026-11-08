@@ -24,7 +24,9 @@ The primary user is the owner operating their own computer, usually at a desktop
 4. Read the original saved input, produced files, QC evidence and explicit limitations.
 5. Approve the current version or leave a revision instruction. Retrying preserves earlier attempts and artifacts.
 
-CSV analysis, offline HTML auditing and local system checks use bounded deterministic tools. Text drafting requires an explicitly configured local model. Media rendering, advertising publication, external crawling and legacy web bridges are not assumed to work. Capabilities, provider availability, connectors and skills come from the current authenticated server state.
+CSV analysis, offline HTML auditing and local system checks use bounded deterministic tools. Text drafting requires an explicitly configured and freshly probed model. The optional gateway supports local AI, Meta Muse and Kimi; cloud generation defaults disabled and requires exact-model free-quota evidence plus a durable dispatch cap under the CEO zero-spend instruction. A model listing does not establish free billing or inference permission. Media rendering, advertising publication, external crawling and legacy web bridges are not assumed to work. Capabilities, provider availability, connectors and skills come from the current authenticated server state.
+
+The sourced_brief API slice adds model manager planning (1–3 sequential specialist steps), durable structured handoffs and independent deterministic exact-excerpt QC before CEO review. It only selects verbatim excerpts from caller-supplied text. Source authenticity, truth, relevance and suitability remain UNVERIFIED; no live retrieval, free-form research or media creation is claimed. The compose form retains its original input kinds; use the documented API or labelled offline demo for this new slice.
 
 ## Requirements and boundaries
 
@@ -32,7 +34,7 @@ CSV analysis, offline HTML auditing and local system checks use bounded determin
 - No sample tasks, simulated live activity, made-up completion percentages, fabricated provider readiness or unsupported quality scores. CSV sample content is inserted only after the user clicks the labelled sample action.
 - Tasks require version-bound CEO approval. QC is shown as evidence and individual dimensions, including unverified dimensions.
 - Show errors from real APIs and make recovery possible through retry, a new task, reconnecting or provider inspection.
-- No external assets, runtime dependencies or paid provider calls. Do not infer permission for a cloud provider from the presence of a skill.
+- No external assets, new runtime dependencies or paid provider calls. Do not infer permission for a cloud provider from a skill, web subscription or successful model-list probe. Cloud dispatch stays disabled until the CEO verifies a free allowance.
 - Use session cookies and CSRF on mutations. Never retain the access key in browser storage. Render all server/user input as text; a preview never executes HTML or Markdown.
 
 ## Original video direction — confirmed 2026-11-09

@@ -15,12 +15,12 @@
     QUEUED: 'Đang chờ', RUNNING: 'Đang thực hiện', BLOCKED: 'Thiếu điều kiện', INTERRUPTED: 'Bị gián đoạn', FAILED: 'Thực thi lỗi', CANCELLED: 'Đã hủy', NEEDS_REVISION: 'Cần chỉnh sửa', AWAITING_APPROVAL: 'Chờ CEO duyệt', DONE: 'Đã hoàn tất',
     AVAILABLE: 'Khả dụng', WORKING: 'Đang làm việc', UNAVAILABLE: 'Chưa khả dụng', NOT_CONNECTED: 'Chưa kết nối', DISABLED: 'Đã tắt', READY: 'Sẵn sàng', CONNECTED: 'Đã kết nối', CONFIGURED: 'Đã cấu hình', UNKNOWN: 'Chưa xác minh', UNCONFIGURED: 'Chưa cấu hình', NOT_CONFIGURED: 'Chưa cấu hình', DISCOVERED: 'Đã ghi nhận', PASS: 'Đạt', FAIL: 'Chưa đạt', UNVERIFIED: 'Cần người kiểm tra', SKIPPED: 'Đã bỏ qua', PENDING: 'Đang chờ', COMPLETED: 'Đã hoàn thành', SUCCEEDED: 'Thực thi thành công', QC_REJECTED: 'QC yêu cầu sửa'
   };
-  const kindNames = { data_analysis: 'Phân tích CSV', html_audit: 'Kiểm tra HTML', system_check: 'Kiểm tra hệ thống', ai_draft: 'Soạn thảo AI', auto: 'Tự xác định' };
-  const modeNames = { RULE_ENGINE: 'Bộ điều phối theo quy tắc', DETERMINISTIC_TOOL: 'Công cụ xác định', AI_PROVIDER: 'Mô hình cục bộ' };
+  const kindNames = { data_analysis: 'Phân tích CSV', html_audit: 'Kiểm tra HTML', system_check: 'Kiểm tra hệ thống', sourced_brief: 'Brief có nguồn', ai_draft: 'Soạn thảo AI', auto: 'Tự xác định' };
+  const modeNames = { RULE_ENGINE: 'Bộ điều phối theo quy tắc', DETERMINISTIC_TOOL: 'Công cụ xác định', AI_PROVIDER: 'Mô hình đã cấu hình', HYBRID: 'Điều phối theo quy trình' };
   const dimensionNames = { technical: 'Kỹ thuật', format: 'Định dạng', source: 'Nguồn', data: 'Dữ liệu', aesthetic: 'Thẩm mỹ', approval: 'Phê duyệt', integrity: 'Toàn vẹn tệp', provenance: 'Nguồn đầu vào', correctness: 'Độ chính xác', completeness: 'Độ đầy đủ', numeric_correctness: 'Đối chiếu số liệu', input_provenance: 'Nguồn đầu vào', artifact_integrity: 'Toàn vẹn tệp', semantic_quality: 'Chất lượng nội dung', aesthetics: 'Chất lượng thẩm mỹ', safety: 'An toàn', content: 'Nội dung', evidence: 'Bằng chứng' };
   const initials = { manager: 'QL', seo: 'SE', content: 'ND', video: 'VI', design: 'TK', development: 'PT', qc: 'QC', finance: 'TC', advertising: 'QCá' };
   const roleNames = { manager: 'Điều phối', seo: 'SEO & AI Search', content: 'Nội dung', video: 'Video & Media', design: 'Thiết kế', development: 'Dev & Automation', qc: 'Kiểm soát chất lượng', finance: 'Dữ liệu & Tài chính', advertising: 'Quảng cáo' };
-  const toolNames = { route_brief: 'Phân loại mục tiêu theo quy tắc', dependency_queue: 'Điều phối thứ tự công việc', csv_statistics: 'Tính thống kê dữ liệu CSV', evidence_report: 'Đóng gói báo cáo có căn cứ', ai_draft: 'Soạn bản nháp với mô hình cục bộ', html_audit: 'Kiểm tra mã HTML đã cung cấp', system_check: 'Kiểm tra hệ thống cục bộ', independent_audit: 'Đối chiếu bằng chứng độc lập' };
+  const toolNames = { route_brief: 'Phân loại mục tiêu theo quy tắc', dependency_queue: 'Điều phối thứ tự công việc', csv_statistics: 'Tính thống kê dữ liệu CSV', evidence_report: 'Đóng gói báo cáo có căn cứ', ai_draft: 'Soạn bản nháp với mô hình đã cấu hình', html_audit: 'Kiểm tra mã HTML đã cung cấp', system_check: 'Kiểm tra hệ thống cục bộ', independent_audit: 'Đối chiếu bằng chứng độc lập' };
   const activeStatuses = new Set(['QUEUED', 'RUNNING']);
   const attentionStatuses = new Set(['BLOCKED', 'INTERRUPTED', 'FAILED', 'NEEDS_REVISION']);
   let state = { agents: [], tasks: [], artifacts: [], events: [], providers: [], skills: [], connectors: [], legacy: [] };
@@ -149,7 +149,7 @@
     const jobs = agentTasks(agent.id).filter(task => activeStatuses.has(task.status) && list(task.steps).some(step => step.agentId === agent.id && step.status === 'RUNNING'));
     if (jobs.length || agent.status === 'WORKING') return { tone: 'working', label: 'Đang thực hiện', jobs };
     if (agent.status === 'AVAILABLE') return { tone: 'available', label: 'Có công cụ khả dụng', jobs };
-    return { tone: 'unavailable', label: agent.status === 'UNAVAILABLE' ? 'Cần mô hình cục bộ' : statusLabel(agent.status), jobs };
+    return { tone: 'unavailable', label: agent.status === 'UNAVAILABLE' ? 'Cần mô hình đã kết nối' : statusLabel(agent.status), jobs };
   }
   function render() {
     const approvals = state.tasks.filter(task => task.status === 'AWAITING_APPROVAL').length;
@@ -419,7 +419,7 @@
     finally { control.disabled = session?.role !== 'admin'; control.textContent = 'Giao việc cho văn phòng →'; }
   });
   $('#sample-csv-button').addEventListener('click', () => { $('#task-csv').value = 'khu_vuc,doanh_thu,chi_phi\nHà Nội,120,78\nĐà Nẵng,95,61\nTP.HCM,160,102\nCần Thơ,72,48'; if (!$('#task-brief').value.trim()) $('#task-brief').value = 'Phân tích dữ liệu mẫu: thống kê doanh thu và chi phí, chỉ ra những điểm cần chú ý.'; showNotice('Đã điền dữ liệu mẫu. Chưa tạo công việc; bấm Giao việc khi bạn sẵn sàng.'); });
-  $('#probe-button').addEventListener('click', async () => { const control = $('#probe-button'); control.disabled = true; control.textContent = 'Đang kiểm tra…'; try { await api('/api/providers/probe', { method: 'POST', body: '{}' }); await refresh(true); showNotice('Đã cập nhật trạng thái nhà cung cấp cục bộ.'); } catch (error) { showGlobalError(error.message); } finally { control.disabled = session?.role !== 'admin'; control.textContent = 'Kiểm tra kết nối cục bộ'; } });
+  $('#probe-button').addEventListener('click', async () => { const control = $('#probe-button'); control.disabled = true; control.textContent = 'Đang kiểm tra…'; try { await api('/api/providers/probe', { method: 'POST', body: '{}' }); await refresh(true); showNotice('Đã cập nhật trạng thái model; probe chưa xác minh quota miễn phí.'); } catch (error) { showGlobalError(error.message); } finally { control.disabled = session?.role !== 'admin'; control.textContent = 'Kiểm tra provider mặc định'; } });
   $('#task-kind').addEventListener('change', updateFields); $('#new-task-button').addEventListener('click', goCompose); $('#refresh-button').addEventListener('click', refresh);
   $$('[data-office-view]').forEach(control => control.addEventListener('click', () => setOfficeView(control.dataset.officeView)));
   $('#task-search').addEventListener('input', renderTasks); $('#task-filter').addEventListener('change', renderTasks); $('#artifact-search').addEventListener('input', renderLibrary);

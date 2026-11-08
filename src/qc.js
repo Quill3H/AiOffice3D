@@ -81,6 +81,7 @@ function expectedSystemReport(data) {
   return '# Local runtime inventory\n\n```json\n' + JSON.stringify(data, null, 2) + '\n```\n\nLimitations: this inventory observes the current Node process only. It does not prove security, installed tools, AI availability, network access or overall machine health.\n\nHuman review and CEO approval are required.\n';
 }
 async function audit({ kind, brief = '', input = {}, files = [], evidence = {}, mode } = {}) {
+  if(kind==='sourced_brief')return require('./source-qc').inspectSourcedBrief({brief,input,files,evidence,mode});
   const checks = [], defects = [], limitations = [];
   const check = (dimension, status, detail) => { checks.push({ dimension, status, detail }); if (status === 'FAIL') defects.push(detail); };
   const expectedNames = kind === 'data_analysis' ? ['analysis.json', 'report.md'] : kind === 'html_audit' ? ['audit.json', 'report.md'] : kind === 'system_check' ? ['system.json', 'report.md'] : kind === 'ai_draft' ? ['draft.md'] : [];

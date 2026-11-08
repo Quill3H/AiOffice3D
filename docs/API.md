@@ -39,3 +39,30 @@ Each remote attempt is reserved in SQLite before dispatch. SUCCEEDED, FAILED and
 Schema2 is an additive migration for the provider ledger; newer versions fail before migration. Do not open schema2 data with an older unchecked runtime. Accepted AI context is <=100000 UTF-8 bytes; execution brief uses the shared 82000-byte bound to cover the existing 12000-character brief plus 8000-character CEO revision. Sign-in is bounded to10 attempts/minute/address including pending bodies and successful attempts.
 
 Primary adapter contracts: [Meta Model API](https://dev.meta.ai/docs/overview), [Kimi API account/key distinctions](https://www.kimi.ai/help/kimi-api/api-troubleshooting). Muse consumer access does not itself demonstrate access to these API endpoints.
+
+## Sourced-brief slice
+
+`POST /api/tasks` accepts `kind:'sourced_brief'` (or auto with input.sources), optional configured providerId, and only `input:{sources:[{id,title,url,text}]}`. Supply1–5 sources with unique lowercase IDs (letter followed by up to39 letters/digits/underscore/hyphen), single-line title<=200 characters, HTTPS URL<=2048 characters without credentials, nonempty text<=20000 UTF-8 bytes each/60000 total; encoded source array<=70000 bytes. URLs are citation metadata, never fetched. The caller is responsible for obtaining and identifying source text; saved text is the evidence, not proof the URL actually contains it.
+
+```json
+{
+  "kind": "sourced_brief",
+  "brief": "Select source excerpts relevant to the CEO's question",
+  "input": {
+    "sources": [{
+      "id": "s1",
+      "title": "Synthetic fixture — replace with your verified source",
+      "url": "https://example.org/fixture",
+      "text": "This is synthetic test evidence, not external research."
+    }]
+  }
+}
+```
+
+Manager returns strict JSON `{steps:[{id,agentId,title,dependsOn}]}`:1–3 sequential steps, roles content/seo/development, first dependsOn empty, each subsequent step depends on exactly its predecessor. Only these fields are accepted; commands/paths/approvals/unknown roles/cycles are rejected before specialist dispatch. Each specialist returns strict JSON `{claims:[{sourceId,quote}]}` with1–8 excerpts<=2000 bytes each and structured response<=20000 bytes. Context includes the assigned step and preceding structured handoff. Task deadline, cancel, bounded queue and20-attempt limit still apply; one attempt has at most4 logical generation calls (manager+3 specialists), each gateway call tries at most3 providers.
+
+Validated plan/provenance and each handoff are saved transactionally in the attempt before the next dispatch, with PLAN_READY/HANDOFF_READY events and actual manager/specialist steps. Final immutable files are `plan.json`, `brief.json`, `report.md`; an interrupted attempt can retain its SQLite checkpoint without having final artifacts. No automatic replay of an interrupted attempt.
+
+Independent worker QC does not import producer validators or report builders. It checks schemas, dependencies, source hashes/metadata, every literal excerpt and citation, stage provenance/content hashes and exact report reconstruction. Fabricated quote/citation => NEEDS_REVISION. PASS means these bounded technical/extractive checks passed; factuality, source authenticity, relevance, completeness, suitability and aesthetics remain UNVERIFIED. QC is an independent deterministic checker in this slice, not a second live model or live fact-checker.
+
+Existing source/history/download/retry/review endpoints work unchanged; history includes persisted model plan and handoffs. Only explicit current-version CEO review can set DONE. This slice is accessible through API; the compose form still offers the original task kinds. `node scripts/demo-sourced-brief.cjs` runs a labelled offline protocol-double demonstration in a fresh temporary workspace, prints evidence locations and leaves the task awaiting approval; it never sends an API request or auto-approves.
