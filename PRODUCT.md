@@ -35,6 +35,12 @@ CSV analysis, offline HTML auditing and local system checks use bounded determin
 - No external assets, runtime dependencies or paid provider calls. Do not infer permission for a cloud provider from the presence of a skill.
 - Use session cookies and CSRF on mutations. Never retain the access key in browser storage. Render all server/user input as text; a preview never executes HTML or Markdown.
 
+## Original video direction — confirmed 2026-11-09
+
+The user delegates niche/topic research to the assistant and research agents. Reference videos and Douyin links are for ideas and storytelling inspiration only; the user explicitly prohibits using an old/reference video as the editing base. Future production must create a new script, newly created footage/screen recordings/graphics and a distinct presentation, with original or appropriately licensed supporting assets. Reupload/crop/revoice/translate/subtitle/minor-edit workflows do not satisfy this requirement.
+
+YouTube policy compliance, truthful metadata, verified asset rights and any required AI disclosure are mandatory acceptance conditions. Original assets and AI usage do not automatically prove compliance or monetization eligibility. See `docs/VIDEO_CONTENT_RULES.md`. This is the next product direction; the current runtime does not yet implement video production or these checks.
+
 ## Design commitment
 
 The user delegated design decisions and requested a real-feeling, lightweight 2.5D office. Use a warm-white, navy and restrained teal studio: an architectural floor, desks, seated staff, plant geometry, department zones and legible state labels. Preserve standard controls for operational tasks. Offer an equivalent personnel list, with the list selected initially on a narrow screen. Keep CEO input separate from the spatial canvas so work remains usable without navigating the scene.
