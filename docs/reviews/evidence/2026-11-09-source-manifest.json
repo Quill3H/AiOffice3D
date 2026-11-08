@@ -1,0 +1,207 @@
+[
+  {
+    "path": "public/app.js",
+    "bytes": 49657,
+    "sha256": "9235727ee9ea5dd96966f9e20b585b08bfcbc20c23cd152e399953e075b32805"
+  },
+  {
+    "path": "public/js/marked.min.js",
+    "bytes": 39903,
+    "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c"
+  },
+  {
+    "path": "scripts/demo-sourced-brief.cjs",
+    "bytes": 2128,
+    "sha256": "515373e26a65f2efb4db384899c230f741ad5768d863e0549889a1d417472074"
+  },
+  {
+    "path": "server.js",
+    "bytes": 926,
+    "sha256": "60193b7dc016d106145453e7aa56eb34c0a9257e89f5ae7fdfb30c31febcb390"
+  },
+  {
+    "path": "src/engine.js",
+    "bytes": 23790,
+    "sha256": "b3ac7cc4c862b86af318ff8a3bf04beac5b5aa16a3ebc9e3f3e94e8d5ff51236"
+  },
+  {
+    "path": "src/gateway-config.js",
+    "bytes": 1427,
+    "sha256": "4f82fc6990ae454a74f51443fdc55850174c75e445096f47b4e7ff921428a7e0"
+  },
+  {
+    "path": "src/gateway.js",
+    "bytes": 6661,
+    "sha256": "e9286fea942209d4a95c94e20ec295f975eb017972e020c26343f5c61dafa8ed"
+  },
+  {
+    "path": "src/http.js",
+    "bytes": 13626,
+    "sha256": "27e373fd3b233070341f31d424d5ceec275040876d59e04ea2a01bba36004c1c"
+  },
+  {
+    "path": "src/limits.js",
+    "bytes": 207,
+    "sha256": "eb36d160d0fd834363a915fbbed524893c0267d80b485ddc0ee19a62af360f46"
+  },
+  {
+    "path": "src/providers.js",
+    "bytes": 8410,
+    "sha256": "93e0f000f9b29108c027e3452bf2f19f786047cba4d60a6627a28ddb037b965c"
+  },
+  {
+    "path": "src/qc.js",
+    "bytes": 12848,
+    "sha256": "7b492dc235f57646f281e2ddb46b65c391adebdd5d046e6ace0e4d12821fe98a"
+  },
+  {
+    "path": "src/source-qc.js",
+    "bytes": 6932,
+    "sha256": "85250ed20d9fa5cdfdb1cf5a8090f0e847232011132f8799da3a2b612655e263"
+  },
+  {
+    "path": "src/sourced-brief.js",
+    "bytes": 7164,
+    "sha256": "6884a22972347b8c1b8e66ba15dcd377c66c8d467f90d864f805f3388b9b6f76"
+  },
+  {
+    "path": "src/store.js",
+    "bytes": 8624,
+    "sha256": "d16d2bdd5bb214b51d852d35b035b4361c65454c0e59177db056fa6099624d39"
+  },
+  {
+    "path": "src/tool-worker.js",
+    "bytes": 3543,
+    "sha256": "e472805d64b3c7ea24c44c7ae2babd3d3c87f9d5b6c32bc280829849750339b2"
+  },
+  {
+    "path": "src/tools.js",
+    "bytes": 7491,
+    "sha256": "efeddb704a52823d33b99f7f2b63892954e751f462ab267b1712dd5a04fdf95e"
+  },
+  {
+    "path": "src/work-worker.js",
+    "bytes": 352,
+    "sha256": "3695f36d5191f584386dac6eb83be8dea93a684df67be3b38fde4d67b71d176d"
+  },
+  {
+    "path": "src/work.js",
+    "bytes": 1636,
+    "sha256": "824ca9d6a74f8f56198ca01af43a41e26f9e2f808e445edc0c6922187997959c"
+  },
+  {
+    "path": "start.sh",
+    "bytes": 144,
+    "sha256": "348c8c7cc43346b610e9aac8603b371705517d1d3a54941244f007e810eef740"
+  },
+  {
+    "path": "stop.sh",
+    "bytes": 143,
+    "sha256": "bf532530af69902511d81ac9116f04657902de06da50220689a6b62f90ff4249"
+  },
+  {
+    "path": "test_bridge_e2e.js",
+    "bytes": 11756,
+    "sha256": "4554b7e758877e8d26a75efe0907c49d0928345850dec20a5ccffe756d0d8fd3"
+  },
+  {
+    "path": "test_verification_suite.js",
+    "bytes": 11797,
+    "sha256": "b36245368e41b67cefb42e0f3721dc4a3e5ebd8d7b4825f4efa83fb1c0c29641"
+  },
+  {
+    "path": "tests/audit-regressions.test.js",
+    "bytes": 5463,
+    "sha256": "7bdd39910166ee96adc09af4a442f9e51f6ebfeacd6061a7da95991f5dbc23a8"
+  },
+  {
+    "path": "tests/fixtures/crash-child.cjs",
+    "bytes": 598,
+    "sha256": "6db7a6d700ab7028d2d3e49ddf272bb7d3f381078971c7bf74c5867f43985bfe"
+  },
+  {
+    "path": "tests/fixtures/sourced-crash-child.cjs",
+    "bytes": 1743,
+    "sha256": "f6c9e43ce45f847b70b292bc54879523bb13f50babeedb0a9538f4a593451879"
+  },
+  {
+    "path": "tests/gateway.test.js",
+    "bytes": 14228,
+    "sha256": "0894d8a6ee9a0d463be6d7a91430caa6f348583aafe8617031feaa1700d765be"
+  },
+  {
+    "path": "tests/http.test.js",
+    "bytes": 10814,
+    "sha256": "d8c8e74de1de4ce1bb1658bcb95116b448cbae8bb3167667ddf3211c22d2b3d2"
+  },
+  {
+    "path": "tests/lifecycle.test.js",
+    "bytes": 562,
+    "sha256": "4548ebabc6d47b55dfe9c8882edf50e750f71286da9c4051d514c41ce663d39a"
+  },
+  {
+    "path": "tests/restart.test.js",
+    "bytes": 3037,
+    "sha256": "17afe5b56abd658e9570ea3ae112549e76e5aed0c4b1c195b6f6742495065a94"
+  },
+  {
+    "path": "tests/runtime.test.js",
+    "bytes": 14152,
+    "sha256": "16b94f915e2692add876599a439aaccfd7584d00427ac2d78ae93273dffb24b6"
+  },
+  {
+    "path": "tests/sourced-brief.test.js",
+    "bytes": 10757,
+    "sha256": "ee347a1593ad70491a324505f5d7f1a217a70fa149addfacf85defe1fbc6d59b"
+  },
+  {
+    "path": "tests/tools.test.js",
+    "bytes": 14784,
+    "sha256": "742b87944c358a6a21282413a9db5451dbe137376f04e875c0bcbdd4b5224a72"
+  },
+  {
+    "path": "tools/chatgpt_bridge.user.js",
+    "bytes": 12450,
+    "sha256": "ffebb133677a302eec16674741fa0d702358367d8aa9d9f867abfb2dc1ab391a"
+  },
+  {
+    "path": "tools/chatgpt_bridge_extension/background.js",
+    "bytes": 6516,
+    "sha256": "df9d6c0fe757b29ab6db85d334b02ae63b1c4652a0a498784cee4687bb83bc6f"
+  },
+  {
+    "path": "tools/chatgpt_bridge_extension/content.js",
+    "bytes": 16302,
+    "sha256": "6c75af11ec61806448653fc0558d2aa16e31d258e3ad4fef44bc532b4d63515f"
+  },
+  {
+    "path": "tools/chatgpt_bridge_extension/popup.js",
+    "bytes": 1163,
+    "sha256": "26a99f1242248a567f0c7bbaa8301fe8b6cb205237be53532fcc9b6f8eee3c48"
+  },
+  {
+    "path": "tools/lifecycle.js",
+    "bytes": 3071,
+    "sha256": "c445b0df293e5a7b3612861003c36451c7a0cda4f9da809eb750bc5c56dc80f8"
+  },
+  {
+    "path": "tools/qc_auditor.js",
+    "bytes": 13105,
+    "sha256": "7fbc147b96f5407b8313edab545599505ae7bb4d97c876c8c0563beb83e7d59d"
+  },
+  {
+    "path": "tools/real_executor.js",
+    "bytes": 24615,
+    "sha256": "2209c9b065f3ae8aa02d8f0608e4d2fb889cd2c0575c12084a8c06a2dea20538"
+  },
+  {
+    "path": "tools/render_viral_video.py",
+    "bytes": 7641,
+    "sha256": "61ce9234b4613a5ed45dd854ff4b0779cb57fb6a2be72f99c1b80661c754068d"
+  },
+  {
+    "path": "tools/video_scraper.py",
+    "bytes": 6361,
+    "sha256": "a08aa75693d18f7bf09d5f92d280e1bba61f473500c506e57720ad378cbadbf4"
+  }
+]

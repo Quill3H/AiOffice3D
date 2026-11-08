@@ -1,0 +1,93 @@
+TAP version 13
+# (node:41831) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: engine routes an explicitly selected configured provider and exposes all health states
+not ok 1 - engine routes an explicitly selected configured provider and exposes all health states
+  ---
+  duration_ms: 97.294511
+  type: 'test'
+  location: '/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:92:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /model local|mô hình cục bộ/i. Input:
+    
+    'Soạn bản nháp bằng model local'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Soạn bản nháp bằng model local'
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:102:9)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: local transient HTTP and transport failures advance to eligible cloud fallback once
+not ok 2 - local transient HTTP and transport failures advance to eligible cloud fallback once
+  ---
+  duration_ms: 8.780795
+  type: 'test'
+  location: '/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:130:1'
+  failureType: 'testCodeFailure'
+  error: 'Local AI HTTP request failed (408)'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    readBoundedJson (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/src/providers.js:19:28)
+    LocalProvider._request (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/src/providers.js:70:12)
+    async LocalProvider.generate (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/src/providers.js:92:22)
+    async ProviderGateway.generate (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/src/gateway.js:80:21)
+    async TestContext.<anonymous> (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:141:17)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: internal JSON mode aligns system instructions and refuses unsupported response modes
+not ok 3 - internal JSON mode aligns system instructions and refuses unsupported response modes
+  ---
+  duration_ms: 1.169392
+  type: 'test'
+  location: '/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:161:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/gateway.test.js:167:22)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# (node:41832) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: model manager and specialists hand off to independent QC then wait for explicit CEO approval
+not ok 4 - model manager and specialists hand off to independent QC then wait for explicit CEO approval
+  ---
+  duration_ms: 81.039034
+  type: 'test'
+  location: '/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/sourced-brief.test.js:27:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(p.calls.every(c=>c.responseMode==='json'))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (/Users/quill/Documents/TÀI LIỆU DÙNG CHUNG AI/AiOffice3D-v4-remediation/tests/sourced-brief.test.js:31:9)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 0
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 196.719578

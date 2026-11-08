@@ -1,6 +1,6 @@
 # V4 gateway and sourced-brief slice Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Fix six reproduced defects and make CEO brief → model manager → model specialist → independent source QC → explicit CEO approval verifiable without claiming live-model access.
 
@@ -31,9 +31,9 @@
 
 **Interfaces:** Existing public APIs unchanged. A shared MAX_BRIEF_BYTES=82000 covers 12000-character brief + 8000-character revision and prefix; context remains 100000 UTF-8 bytes and is validated before queuing AI work.
 
-- [ ] Add/watch RED for each A01–A06 repro; two REDs already observed for future schema and concurrent login.
-- [ ] Guard future schema before DDL; reserve login attempt before await; compare JSON number semantics; align UTF-8 limits; distinguish caller abort; recognize exact HTML tag names in producer and independent scanner.
-- [ ] Run new regressions and full suite; commit only fixes/tests with observed results.
+- [x] Add/watch RED for each A01–A06 repro; two REDs already observed for future schema and concurrent login.
+- [x] Guard future schema before DDL; reserve login attempt before await; compare JSON number semantics; align UTF-8 limits; distinguish caller abort; recognize exact HTML tag names in producer and independent scanner.
+- [x] Run new regressions and full suite; commit only fixes/tests with observed results.
 
 ## Task 2 — A: provider gateway, access and spending bounds
 
@@ -45,9 +45,9 @@
 
 **Persist:** additive SQLite table provider_calls: unique call ID, task/attempt/phase, provider/model, RESERVED/SUCCEEDED/FAILED/UNKNOWN, timestamp, usage. Per-workspace configured remoteCallLimit is an additional cap, not proof of free billing; remote generation also requires explicit verified-free operator setting. Reserve atomically before dispatch, retain reservation on failure/crash. No cost or free-quota claim without provider evidence.
 
-- [ ] RED tests: missing credentials, rejected endpoint/model mismatch, outage→bounded fallback, cancellation→no fallback, timeout, malformed/truncated response, persisted call cap and restart ambiguity.
-- [ ] Implement at most one dispatch per configured provider per call, at most 3 providers; no fallback for malformed successful output, caller abort or exhausted budget. Default remoteCallLimit=0. Suppress provider error bodies/keys in public state.
-- [ ] GREEN focused tests and existing provider/HTTP suite; commit. Real access only if key and verified-free quota exist, otherwise record NOT_CONFIGURED/UNVERIFIED.
+- [x] RED tests: missing credentials, rejected endpoint/model mismatch, outage→bounded fallback, cancellation→no fallback, timeout, malformed/truncated response, persisted call cap and restart ambiguity.
+- [x] Implement at most one dispatch per configured provider per call, at most 3 providers; no fallback for malformed successful output, caller abort or exhausted budget. Default remoteCallLimit=0. Suppress provider error bodies/keys in public state.
+- [x] GREEN focused tests and existing provider/HTTP suite; commit. Real access only if key and verified-free quota exist, otherwise record NOT_CONFIGURED/UNVERIFIED.
 
 ## Task 3 — B/C: sourced-brief vertical slice
 
@@ -61,9 +61,9 @@
 
 **QC contract:** a separate module reads disk artifacts and independently validates plan schema/dependencies, every handoff/claim, exact quote inclusion, source IDs/URL/title/hash, complete report reconstruction and stage provenance. Factual truth/source authenticity/relevance remain UNVERIFIED. Fabricated quote or citation => NEEDS_REVISION. PASS means bounded extractive checks passed, never automatic DONE.
 
-- [ ] RED: complete double-backed workflow waits for approval, malformed plan makes zero specialist calls, fabricated quote rejected, dependency handoffs preserved, retry retains old artifacts, duplicate key no extra model calls, cancellation/outage bounded.
-- [ ] Implement stages and independent QC without changing deterministic workflows. Use explicit protocol-double fixtures, no fake live badges.
-- [ ] GREEN focused suite and all regressions; commit. Provide a runnable API example and evidence identifying doubles vs actual models.
+- [x] RED: complete double-backed workflow waits for approval, malformed plan makes zero specialist calls, fabricated quote rejected, dependency handoffs preserved, retry retains old artifacts, duplicate key no extra model calls, cancellation/outage bounded.
+- [x] Implement stages and independent QC without changing deterministic workflows. Use explicit protocol-double fixtures, no fake live badges.
+- [x] GREEN focused suite and all regressions; commit. Provide a runnable API example and evidence identifying doubles vs actual models.
 
 ## Task 4 — D: binary infrastructure boundary
 
@@ -71,15 +71,17 @@
 
 **API/data design:** Buffer/Uint8Array bytes; allowlisted extension/MIME; PNG signature/IHDR/dimensions plus decoder validation, MP4 ftyp/container/codec/duration via separately approved decoder; streaming temporary wx file, bounded bytes, fsync, atomic registry publication, SHA-256, no overwrite. Store bytes/mime/sha/dimensions/duration/validation status with artifact ID. GET /api/artifacts/:id/download streams correct MIME + attachment; inline media restricted to verified formats. Failed decoding cannot claim content QC.
 
-- [ ] Document migration/API/files/regressions/acceptance for PNG and MP4: spoofed MIME, polyglot, truncation, zip/decompression bomb, quota concurrent reservation, cancellation, crash orphan, streaming hash mismatch. Preserve orphans, no automatic deletion.
-- [ ] Keep binary implementation deferred in this slice: no media producer exists, current 2MiB text limit remains explicit. Do not mark D implemented.
+- [x] Document migration/API/files/regressions/acceptance for PNG and MP4: spoofed MIME, polyglot, truncation, zip/decompression bomb, quota concurrent reservation, cancellation, crash orphan, streaming hash mismatch. Preserve orphans, no automatic deletion.
+- [x] Keep binary implementation deferred in this slice: no media producer exists, current 2MiB text limit remains explicit. Do not mark D implemented.
 
 ## Task 5 — E: verification and independent review
 
 **Files:** tests above plus existing tests/runtime.test.js, tests/http.test.js, tests/restart.test.js, tests/tools.test.js, tests/lifecycle.test.js; docs/reviews/2026-11-09-remediation-results.md.
 
-- [ ] Run node --test focused RED/GREEN per change, then npm test using isolated temporary data and authorized loopback fixtures; include real SIGKILL restart test.
-- [ ] Independently review complete branch against base, fix confirmed material findings with regressions, rerun affected/full suite after changes.
-- [ ] Record actual counts/logs, commit list, no-real-model limitation, remaining binary/general-DAG/semantic-QC limits and CEO decisions. Verify original checkout and main untouched; no push/merge.
+- [x] Run node --test focused RED/GREEN per change, then npm test using isolated temporary data and authorized loopback fixtures; include real SIGKILL restart test.
+- [x] Independently review complete branch against base, fix confirmed material findings with regressions, rerun affected/full suite after changes.
+- [x] Record actual counts/logs, commit list, no-real-model limitation, remaining binary/general-DAG/semantic-QC limits and CEO decisions. Verify original checkout and main untouched; no push/merge.
 
 Acceptance: all six repros green; old suite green; gateway and sourced-brief tests green with persisted provenance/cap; approved status only via explicit current-version CEO request; zero cloud spend and no live-inference claim absent evidence.
+
+Execution record: see docs/reviews/2026-11-09-remediation-results.md. Completed checkboxes describe delivered scope and conditional verification records, not live-model or binary implementation acceptance.

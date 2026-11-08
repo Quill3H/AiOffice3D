@@ -1,0 +1,530 @@
+
+> van-phong-ai-studio@4.0.0 test
+> node --test tests/*.test.js
+
+TAP version 13
+# (node:42218) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: startup refuses a future database schema without downgrading it
+ok 1 - startup refuses a future database schema without downgrading it
+  ---
+  duration_ms: 17.760965
+  type: 'test'
+  ...
+# Subtest: parallel login requests cannot each obtain a fresh rate-limit bucket
+ok 2 - parallel login requests cannot each obtain a fresh rate-limit bucket
+  ---
+  duration_ms: 193.315469
+  type: 'test'
+  ...
+# Subtest: signed zero CSV passes independent JSON-statistics QC
+ok 3 - signed zero CSV passes independent JSON-statistics QC
+  ---
+  duration_ms: 42.748886
+  type: 'test'
+  ...
+# Subtest: HTML custom elements do not masquerade as standard tags
+ok 4 - HTML custom elements do not masquerade as standard tags
+  ---
+  duration_ms: 1.822395
+  type: 'test'
+  ...
+# Subtest: CEO cancellation preserves a fresh healthy provider probe
+ok 5 - CEO cancellation preserves a fresh healthy provider probe
+  ---
+  duration_ms: 50.525552
+  type: 'test'
+  ...
+# Subtest: accepted long Unicode brief and CEO revision stay inside execution bounds
+ok 6 - accepted long Unicode brief and CEO revision stay inside execution bounds
+  ---
+  duration_ms: 292.62948
+  type: 'test'
+  ...
+# (node:42219) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: cloud configuration rejects arbitrary endpoints and does not expose keys
+ok 7 - cloud configuration rejects arbitrary endpoints and does not expose keys
+  ---
+  duration_ms: 32.465647
+  type: 'test'
+  ...
+# Subtest: unconfigured defaults never imply access or free quota
+ok 8 - unconfigured defaults never imply access or free quota
+  ---
+  duration_ms: 118.308162
+  type: 'test'
+  ...
+# Subtest: advertised model does not bypass disabled generation budget
+ok 9 - advertised model does not bypass disabled generation budget
+  ---
+  duration_ms: 12.134816
+  type: 'test'
+  ...
+# Subtest: cloud calls require expiring free-quota evidence as well as a call cap
+ok 10 - cloud calls require expiring free-quota evidence as well as a call cap
+  ---
+  duration_ms: 7.755467
+  type: 'test'
+  ...
+# Subtest: quota reservation and exact call identity survive restart
+ok 11 - quota reservation and exact call identity survive restart
+  ---
+  duration_ms: 34.441805
+  type: 'test'
+  ...
+# Subtest: restart retains an ambiguous reservation and refuses duplicate dispatch
+ok 12 - restart retains an ambiguous reservation and refuses duplicate dispatch
+  ---
+  duration_ms: 83.512712
+  type: 'test'
+  ...
+# Subtest: outage falls back once per route, conserving each attempted cloud call
+ok 13 - outage falls back once per route, conserving each attempted cloud call
+  ---
+  duration_ms: 51.74512
+  type: 'test'
+  ...
+# Subtest: caller cancellation never falls back and leaves healthy probe intact
+ok 14 - caller cancellation never falls back and leaves healthy probe intact
+  ---
+  duration_ms: 22.396318
+  type: 'test'
+  ...
+# Subtest: malformed successful response never silently falls back
+ok 15 - malformed successful response never silently falls back
+  ---
+  duration_ms: 23.801153
+  type: 'test'
+  ...
+# Subtest: concurrent cloud calls cannot exceed the persisted dispatch cap
+ok 16 - concurrent cloud calls cannot exceed the persisted dispatch cap
+  ---
+  duration_ms: 19.970431
+  type: 'test'
+  ...
+# Subtest: timeout has bounded dispatch and sanitizes network errors
+ok 17 - timeout has bounded dispatch and sanitizes network errors
+  ---
+  duration_ms: 44.838547
+  type: 'test'
+  ...
+# Subtest: engine routes an explicitly selected configured provider and exposes all health states
+ok 18 - engine routes an explicitly selected configured provider and exposes all health states
+  ---
+  duration_ms: 81.299717
+  type: 'test'
+  ...
+# Subtest: cloud timeout uses an actual abort deadline without fallback loops
+ok 19 - cloud timeout uses an actual abort deadline without fallback loops
+  ---
+  duration_ms: 10.929332
+  type: 'test'
+  ...
+# Subtest: cloud protocol rejects truncation, tool calls, missing model, invalid JSON and oversized bodies
+ok 20 - cloud protocol rejects truncation, tool calls, missing model, invalid JSON and oversized bodies
+  ---
+  duration_ms: 3.447124
+  type: 'test'
+  ...
+# Subtest: missing API credential never attempts a model probe
+ok 21 - missing API credential never attempts a model probe
+  ---
+  duration_ms: 0.188335
+  type: 'test'
+  ...
+# Subtest: local transient HTTP and transport failures advance to eligible cloud fallback once
+ok 22 - local transient HTTP and transport failures advance to eligible cloud fallback once
+  ---
+  duration_ms: 138.544251
+  type: 'test'
+  ...
+# Subtest: local malformed successful output, fatal HTTP and caller cancellation never trigger fallback
+ok 23 - local malformed successful output, fatal HTTP and caller cancellation never trigger fallback
+  ---
+  duration_ms: 33.77491
+  type: 'test'
+  ...
+# Subtest: internal JSON mode aligns system instructions and refuses unsupported response modes
+ok 24 - internal JSON mode aligns system instructions and refuses unsupported response modes
+  ---
+  duration_ms: 1.795017
+  type: 'test'
+  ...
+# (node:42220) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: authenticated sourced-brief API persists source/history and waits for explicit current-version approval (protocol double)
+ok 25 - authenticated sourced-brief API persists source/history and waits for explicit current-version approval (protocol double)
+  ---
+  duration_ms: 482.075906
+  type: 'test'
+  ...
+# Subtest: anonymous business data is denied, security headers applied and bridge disabled
+ok 26 - anonymous business data is denied, security headers applied and bridge disabled
+  ---
+  duration_ms: 42.948108
+  type: 'test'
+  ...
+# Subtest: reader token can read but cannot create/review/probe
+ok 27 - reader token can read but cannot create/review/probe
+  ---
+  duration_ms: 84.47039
+  type: 'test'
+  ...
+# Subtest: same-origin session requires CSRF on writes and rejects forged Origin
+ok 28 - same-origin session requires CSRF on writes and rejects forged Origin
+  ---
+  duration_ms: 73.644404
+  type: 'test'
+  ...
+# Subtest: request bounds/types, path traversal and injected input cannot reach a shell or filesystem
+ok 29 - request bounds/types, path traversal and injected input cannot reach a shell or filesystem
+  ---
+  duration_ms: 45.928142
+  type: 'test'
+  ...
+# Subtest: actual HTTP workflow serves registered artifacts only and cannot auto-approve
+ok 30 - actual HTTP workflow serves registered artifacts only and cannot auto-approve
+  ---
+  duration_ms: 115.029014
+  type: 'test'
+  ...
+# Subtest: forged Host and cross-site request metadata are rejected
+ok 31 - forged Host and cross-site request metadata are rejected
+  ---
+  duration_ms: 20.632167
+  type: 'test'
+  ...
+# Subtest: SSE stream is revoked immediately on session logout
+ok 32 - SSE stream is revoked immediately on session logout
+  ---
+  duration_ms: 19.576143
+  type: 'test'
+  ...
+# Subtest: provider-only health change advances persisted snapshot revision (labelled provider double)
+ok 33 - provider-only health change advances persisted snapshot revision (labelled provider double)
+  ---
+  duration_ms: 23.806452
+  type: 'test'
+  ...
+# Subtest: lifecycle verifies exact process command, not arbitrary listener or substring
+ok 34 - lifecycle verifies exact process command, not arbitrary listener or substring
+  ---
+  duration_ms: 3.622403
+  type: 'test'
+  ...
+# (node:42222) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: real SIGKILL process crash recovers SQLite and retries same task without overwriting artifacts
+ok 35 - real SIGKILL process crash recovers SQLite and retries same task without overwriting artifacts
+  ---
+  duration_ms: 402.076058
+  type: 'test'
+  ...
+# Subtest: real SIGKILL during a source handoff preserves plan and unknown cloud reservation without auto replay
+ok 36 - real SIGKILL during a source handoff preserves plan and unknown cloud reservation without auto replay
+  ---
+  duration_ms: 268.486388
+  type: 'test'
+  ...
+# (node:42223) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: real CSV tool → independent QC → explicit CEO approval with durable artifacts
+ok 37 - real CSV tool → independent QC → explicit CEO approval with durable artifacts
+  ---
+  duration_ms: 207.531766
+  type: 'test'
+  ...
+# Subtest: missing input is BLOCKED and malformed CSV never DONE
+ok 38 - missing input is BLOCKED and malformed CSV never DONE
+  ---
+  duration_ms: 50.160405
+  type: 'test'
+  ...
+# Subtest: idempotency is persistent, concurrent duplicate dispatch returns one task and changed body conflicts
+ok 39 - idempotency is persistent, concurrent duplicate dispatch returns one task and changed body conflicts
+  ---
+  duration_ms: 209.12642
+  type: 'test'
+  ...
+# Subtest: revision retains artifacts and new acceptance is bound to latest version
+ok 40 - revision retains artifacts and new acceptance is bound to latest version
+  ---
+  duration_ms: 234.149709
+  type: 'test'
+  ...
+# Subtest: approval rechecks missing/tampered artifact and never bypasses QC
+ok 41 - approval rechecks missing/tampered artifact and never bypasses QC
+  ---
+  duration_ms: 108.94085
+  type: 'test'
+  ...
+# Subtest: registered artifact symlink cannot read outside workspace
+ok 42 - registered artifact symlink cannot read outside workspace
+  ---
+  duration_ms: 110.100048
+  type: 'test'
+  ...
+# Subtest: durable state and approvals survive store close/reopen, second writer rejected
+ok 43 - durable state and approvals survive store close/reopen, second writer rejected
+  ---
+  duration_ms: 108.194303
+  type: 'test'
+  ...
+# Subtest: concurrent different tasks keep unique outputs and bound active workers
+ok 44 - concurrent different tasks keep unique outputs and bound active workers
+  ---
+  duration_ms: 251.477852
+  type: 'test'
+  ...
+# Subtest: cancellation and timeout prevent late success (labelled executor test double)
+ok 45 - cancellation and timeout prevent late success (labelled executor test double)
+  ---
+  duration_ms: 166.390135
+  type: 'test'
+  ...
+# Subtest: recovery marks interrupted attempts honestly and retry preserves audit history
+ok 46 - recovery marks interrupted attempts honestly and retry preserves audit history
+  ---
+  duration_ms: 82.22151
+  type: 'test'
+  ...
+# Subtest: unsupported providers and unsafe object inputs are rejected without execution
+ok 47 - unsupported providers and unsafe object inputs are rejected without execution
+  ---
+  duration_ms: 5.589996
+  type: 'test'
+  ...
+# Subtest: shutdown marks active attempt INTERRUPTED and preserves it for explicit retry
+ok 48 - shutdown marks active attempt INTERRUPTED and preserves it for explicit retry
+  ---
+  duration_ms: 14.020686
+  type: 'test'
+  ...
+# Subtest: independent QC rejection blocks approval (labelled inspector test double)
+ok 49 - independent QC rejection blocks approval (labelled inspector test double)
+  ---
+  duration_ms: 51.581594
+  type: 'test'
+  ...
+# Subtest: SQLite scheduler ownership still rejects second writer if stale lock file was replaced
+ok 50 - SQLite scheduler ownership still rejects second writer if stale lock file was replaced
+  ---
+  duration_ms: 5.577837
+  type: 'test'
+  ...
+# Subtest: queue and workspace limits reject excess work without duplicate loss
+ok 51 - queue and workspace limits reject excess work without duplicate loss
+  ---
+  duration_ms: 6.453513
+  type: 'test'
+  ...
+# Subtest: existing workspace permissions are private and database/sidecar symlinks are rejected
+ok 52 - existing workspace permissions are private and database/sidecar symlinks are rejected
+  ---
+  duration_ms: 5.452992
+  type: 'test'
+  ...
+# Subtest: near-limit malformed HTML remains cancellable without blocking the event loop
+ok 53 - near-limit malformed HTML remains cancellable without blocking the event loop
+  ---
+  duration_ms: 68.606457
+  type: 'test'
+  ...
+# Subtest: artifact publication refuses a symlinked root before writing outside workspace
+ok 54 - artifact publication refuses a symlinked root before writing outside workspace
+  ---
+  duration_ms: 39.107427
+  type: 'test'
+  ...
+# Subtest: snapshot revisions order task events so slow polling cannot overwrite newer SSE state
+ok 55 - snapshot revisions order task events so slow polling cannot overwrite newer SSE state
+  ---
+  duration_ms: 82.357071
+  type: 'test'
+  ...
+# Subtest: artifact quota reserves failed-attempt space before any output write
+ok 56 - artifact quota reserves failed-attempt space before any output write
+  ---
+  duration_ms: 37.172769
+  type: 'test'
+  ...
+# Subtest: missing output file prevents download and acceptance
+ok 57 - missing output file prevents download and acceptance
+  ---
+  duration_ms: 114.179763
+  type: 'test'
+  ...
+# (node:42224) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: model manager and specialists hand off to independent QC then wait for explicit CEO approval
+ok 58 - model manager and specialists hand off to independent QC then wait for explicit CEO approval
+  ---
+  duration_ms: 182.16275
+  type: 'test'
+  ...
+# Subtest: duplicate task and retry keys never repeat inference; revision preserves prior artifacts
+ok 59 - duplicate task and retry keys never repeat inference; revision preserves prior artifacts
+  ---
+  duration_ms: 284.277446
+  type: 'test'
+  ...
+# Subtest: malformed, cyclic and executable manager plans stop before any specialist call
+ok 60 - malformed, cyclic and executable manager plans stop before any specialist call
+  ---
+  duration_ms: 42.448099
+  type: 'test'
+  ...
+# Subtest: fabricated quote and fabricated citation are both independently rejected
+ok 61 - fabricated quote and fabricated citation are both independently rejected
+  ---
+  duration_ms: 153.750435
+  type: 'test'
+  ...
+# Subtest: source and encoded-context limits reject before queuing or generation
+ok 62 - source and encoded-context limits reject before queuing or generation
+  ---
+  duration_ms: 14.948322
+  type: 'test'
+  ...
+# Subtest: CEO cancellation during planning makes zero specialist calls and persists cancellation
+ok 63 - CEO cancellation during planning makes zero specialist calls and persists cancellation
+  ---
+  duration_ms: 10.626145
+  type: 'test'
+  ...
+# Subtest: manager checkpoint is durable before the first specialist starts
+ok 64 - manager checkpoint is durable before the first specialist starts
+  ---
+  duration_ms: 17.940985
+  type: 'test'
+  ...
+# Subtest: deterministic source QC detects a tampered report independently of producer evidence
+ok 65 - deterministic source QC detects a tampered report independently of producer evidence
+  ---
+  duration_ms: 72.241715
+  type: 'test'
+  ...
+# Subtest: gateway records separate manager and specialist phases in a real engine run using cloud protocol double
+ok 66 - gateway records separate manager and specialist phases in a real engine run using cloud protocol double
+  ---
+  duration_ms: 112.009475
+  type: 'test'
+  ...
+# Subtest: queued source task resumes once after startup and uses the same CEO gate
+ok 67 - queued source task resumes once after startup and uses the same CEO gate
+  ---
+  duration_ms: 73.511899
+  type: 'test'
+  ...
+# Subtest: source planning deadline aborts bounded work without a handoff or approval
+ok 68 - source planning deadline aborts bounded work without a handoff or approval
+  ---
+  duration_ms: 16.500219
+  type: 'test'
+  ...
+# Subtest: CSV tool computes quoted multiline data and missing numbers from supplied input
+ok 69 - CSV tool computes quoted multiline data and missing numbers from supplied input
+  ---
+  duration_ms: 38.731642
+  type: 'test'
+  ...
+# Subtest: CSV tool rejects malformed, empty and oversized sources instead of fabricating data
+ok 70 - CSV tool rejects malformed, empty and oversized sources instead of fabricating data
+  ---
+  duration_ms: 337.660654
+  type: 'test'
+  ...
+# Subtest: CSV mixed types expose exclusions without converting nonnumeric text to zero
+ok 71 - CSV mixed types expose exclusions without converting nonnumeric text to zero
+  ---
+  duration_ms: 59.483729
+  type: 'test'
+  ...
+# Subtest: CSV worker respects abort signals and does not emit late artifacts
+ok 72 - CSV worker respects abort signals and does not emit late artifacts
+  ---
+  duration_ms: 1.159868
+  type: 'test'
+  ...
+# Subtest: independent CSV QC passes correct data but always requires approval
+ok 73 - independent CSV QC passes correct data but always requires approval
+  ---
+  duration_ms: 35.524712
+  type: 'test'
+  ...
+# Subtest: independent CSV QC rejects corrupted statistics, misleading report, missing source and blank output
+ok 74 - independent CSV QC rejects corrupted statistics, misleading report, missing source and blank output
+  ---
+  duration_ms: 33.094451
+  type: 'test'
+  ...
+# Subtest: HTML tool checks only supplied HTML and its bounded findings survive independent QC
+ok 75 - HTML tool checks only supplied HTML and its bounded findings survive independent QC
+  ---
+  duration_ms: 2.117521
+  type: 'test'
+  ...
+# Subtest: system check reports observed local Node runtime and explicit limits
+ok 76 - system check reports observed local Node runtime and explicit limits
+  ---
+  duration_ms: 1.854952
+  type: 'test'
+  ...
+# Subtest: AI draft carries provider provenance while semantics and aesthetics remain unverified
+ok 77 - AI draft carries provider provenance while semantics and aesthetics remain unverified
+  ---
+  duration_ms: 0.705497
+  type: 'test'
+  ...
+# Subtest: local HTTP test double: provider requires explicit loopback config and successful model probe
+ok 78 - local HTTP test double: provider requires explicit loopback config and successful model probe
+  ---
+  duration_ms: 96.031003
+  type: 'test'
+  ...
+# Subtest: local HTTP test double: missing models, redirects and oversized responses never connect
+ok 79 - local HTTP test double: missing models, redirects and oversized responses never connect
+  ---
+  duration_ms: 65.806475
+  type: 'test'
+  ...
+# Subtest: local HTTP test double: generation honors caller cancellation
+ok 80 - local HTTP test double: generation honors caller cancellation
+  ---
+  duration_ms: 7.159011
+  type: 'test'
+  ...
+# Subtest: provider rejects explicit cloud and hosted-only model identifiers before any request
+ok 81 - provider rejects explicit cloud and hosted-only model identifiers before any request
+  ---
+  duration_ms: 0.508394
+  type: 'test'
+  ...
+# Subtest: provider expires unchecked connectivity and refuses generation until a fresh probe
+ok 82 - provider expires unchecked connectivity and refuses generation until a fresh probe
+  ---
+  duration_ms: 2.776146
+  type: 'test'
+  ...
+# Subtest: provider refuses to attribute missing or mismatched response models to the probed model
+ok 83 - provider refuses to attribute missing or mismatched response models to the probed model
+  ---
+  duration_ms: 8.569597
+  type: 'test'
+  ...
+# Subtest: provider refuses incomplete or tool-call completions as successful drafts
+ok 84 - provider refuses incomplete or tool-call completions as successful drafts
+  ---
+  duration_ms: 5.881764
+  type: 'test'
+  ...
+1..84
+# tests 84
+# suites 0
+# pass 84
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2142.787809

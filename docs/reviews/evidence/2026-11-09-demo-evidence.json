@@ -1,0 +1,153 @@
+{
+  "mode": "OFFLINE_PROTOCOL_DOUBLE_NOT_LIVE",
+  "workspace": "/var/folders/kv/n59m6zpn16g2_02j82l397th0000gn/T/aioffice-sourced-demo-k2Munh",
+  "taskId": "task-0ffb7953-09bf-4716-9376-2f66940aee87",
+  "status": "AWAITING_APPROVAL",
+  "approval": null,
+  "steps": [
+    {
+      "id": "manager_plan",
+      "agentId": "manager",
+      "title": "Model manager lập kế hoạch có giới hạn",
+      "dependsOn": [],
+      "mode": "AI_PROVIDER",
+      "status": "DONE",
+      "startedAt": "2026-11-08T20:40:28.630Z",
+      "finishedAt": "2026-11-08T20:40:28.632Z"
+    },
+    {
+      "id": "extract",
+      "agentId": "content",
+      "title": "Select synthetic evidence",
+      "dependsOn": [
+        "manager_plan"
+      ],
+      "status": "DONE",
+      "mode": "AI_PROVIDER",
+      "startedAt": "2026-11-08T20:40:28.633Z",
+      "finishedAt": "2026-11-08T20:40:28.634Z"
+    },
+    {
+      "id": "publish",
+      "agentId": "content",
+      "title": "Đóng gói trích dẫn và nguồn",
+      "dependsOn": [
+        "extract"
+      ],
+      "status": "DONE",
+      "mode": "DETERMINISTIC_TOOL",
+      "startedAt": "2026-11-08T20:40:28.634Z",
+      "finishedAt": "2026-11-08T20:40:28.650Z"
+    },
+    {
+      "id": "qc",
+      "agentId": "qc",
+      "title": "QC độc lập đối chiếu từng trích dẫn",
+      "dependsOn": [
+        "publish"
+      ],
+      "status": "DONE",
+      "mode": "DETERMINISTIC_TOOL",
+      "startedAt": "2026-11-08T20:40:28.650Z",
+      "finishedAt": "2026-11-08T20:40:28.688Z"
+    }
+  ],
+  "qc": {
+    "verdict": "PASS",
+    "checks": [
+      {
+        "dimension": "technical",
+        "status": "PASS",
+        "detail": "Three bounded named artifacts with correct MIME and nonempty contents are required."
+      },
+      {
+        "dimension": "format",
+        "status": "PASS",
+        "detail": "Manager plan and extractive brief must have the independent QC schema."
+      },
+      {
+        "dimension": "source",
+        "status": "PASS",
+        "detail": "Recorded source metadata/hashes, mode and brief hash must match supplied evidence."
+      },
+      {
+        "dimension": "dependencies",
+        "status": "PASS",
+        "detail": "Manager must produce a valid 1–3 step chain with bound specialist roles and provenance."
+      },
+      {
+        "dimension": "grounding",
+        "status": "PASS",
+        "detail": "Every specialist handoff must reference a known source and an exact nonempty excerpt."
+      },
+      {
+        "dimension": "content",
+        "status": "PASS",
+        "detail": "Report must reproduce the structured excerpts and required scope limitations exactly."
+      },
+      {
+        "dimension": "factuality",
+        "status": "UNVERIFIED",
+        "detail": "Submitted source authenticity and factual truth were not independently verified."
+      },
+      {
+        "dimension": "relevance",
+        "status": "UNVERIFIED",
+        "detail": "Relevance, selection bias, completeness and suitability need human review."
+      },
+      {
+        "dimension": "aesthetic",
+        "status": "UNVERIFIED",
+        "detail": "Presentation quality needs human review."
+      },
+      {
+        "dimension": "approval",
+        "status": "UNVERIFIED",
+        "detail": "Only explicit current-version CEO approval can complete this task."
+      }
+    ],
+    "defects": [],
+    "limitations": [
+      "Checks compare submitted text only. URLs were not fetched; source authenticity, truth, relevance and completeness require human review."
+    ],
+    "requiresApproval": true
+  },
+  "artifacts": [
+    {
+      "id": "art-7bfc42e2-12d0-45c6-991a-a8a7ba4438a9",
+      "taskId": "task-0ffb7953-09bf-4716-9376-2f66940aee87",
+      "attemptId": "attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa",
+      "version": 1,
+      "name": "plan.json",
+      "mime": "application/json",
+      "size": 459,
+      "sha256": "7b3703e66a8734ec12c162980fb324a05478041ce7e951e8dd2c21d397d6da4c",
+      "createdAt": "2026-11-08T20:40:28.641Z",
+      "path": "/var/folders/kv/n59m6zpn16g2_02j82l397th0000gn/T/aioffice-sourced-demo-k2Munh/artifacts/task-0ffb7953-09bf-4716-9376-2f66940aee87/attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa/plan.json"
+    },
+    {
+      "id": "art-0e8e1ea5-3e59-4349-a41e-5802b4426019",
+      "taskId": "task-0ffb7953-09bf-4716-9376-2f66940aee87",
+      "attemptId": "attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa",
+      "version": 1,
+      "name": "brief.json",
+      "mime": "application/json",
+      "size": 838,
+      "sha256": "6349e3b2ece836f24a50036a9653512cb76fce8c4c16f5f7ccd4c10d687de05a",
+      "createdAt": "2026-11-08T20:40:28.645Z",
+      "path": "/var/folders/kv/n59m6zpn16g2_02j82l397th0000gn/T/aioffice-sourced-demo-k2Munh/artifacts/task-0ffb7953-09bf-4716-9376-2f66940aee87/attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa/brief.json"
+    },
+    {
+      "id": "art-9d92ee4c-d9fc-48b4-959f-f486f3b241fc",
+      "taskId": "task-0ffb7953-09bf-4716-9376-2f66940aee87",
+      "attemptId": "attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa",
+      "version": 1,
+      "name": "report.md",
+      "mime": "text/markdown",
+      "size": 474,
+      "sha256": "5aaa09f0c654c6c30fa2863b026ffc3f2b6f4cb1f8cf0914a8903dc0c8aaf0b6",
+      "createdAt": "2026-11-08T20:40:28.648Z",
+      "path": "/var/folders/kv/n59m6zpn16g2_02j82l397th0000gn/T/aioffice-sourced-demo-k2Munh/artifacts/task-0ffb7953-09bf-4716-9376-2f66940aee87/attempt-3b2e5683-8872-41ef-a80a-8fa74fcaceaa/report.md"
+    }
+  ]
+}
