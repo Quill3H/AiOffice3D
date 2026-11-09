@@ -70,7 +70,15 @@ class Engine extends EventEmitter {
    const issues=[];
    if(kind==='data_analysis'&&!input.csv?.trim()) issues.push('Cần cung cấp CSV để tính số liệu.');
    if(kind==='html_audit'&&!input.html?.trim()) issues.push('Cần cung cấp HTML; ứng dụng không tự truy cập URL.');
-   if(['ai_draft','sourced_brief'].includes(kind)&&this.provider.status(providerId).status!=='CONNECTED') issues.push('Chưa có model được cấu hình và probe còn hiệu lực.');
+   if(['ai_draft','sourced_brief'].includes(kind)){
+     const availability=this.provider.status(providerId);
+     if(availability.status==='RATE_LIMITED'){
+       const retry=availability.retryAt?' Thời điểm thử lại: '+availability.retryAt+'.':'';
+       issues.push('Đã hết hạn mức miễn phí của nhà cung cấp.'+retry);
+     }else if(availability.status!=='CONNECTED'){
+       issues.push('Chưa có model được cấu hình và probe còn hiệu lực.');
+     }
+   }
    if(kind==='ai_draft'&&!input.context?.trim())issues.push('Cần cung cấp ngữ cảnh và căn cứ để model viết bản nháp.');
    const t={id:'task-'+crypto.randomUUID(),...request,status:issues.length?'BLOCKED':'QUEUED',steps:[],attempts:[],artifacts:[],version:0,qc:null,approval:null,revision:null,error:issues.join(' ')||null,createdAt:now(),updatedAt:now()};
    this.store.save(t,{type:issues.length?'BLOCKED':'TASK_CREATED',message:issues.join(' ')||'CEO đã giao việc; kế hoạch theo rule engine sẽ chạy trong hàng đợi.',agentId:'manager'},{key,fingerprint});
