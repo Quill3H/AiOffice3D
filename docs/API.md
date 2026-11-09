@@ -68,3 +68,22 @@ Independent worker QC does not import producer validators or report builders. It
 Existing source/history/download/retry/review endpoints work unchanged; history includes persisted model plan and handoffs. Only explicit current-version CEO review can set DONE. This slice is accessible through API; the compose form still offers the original task kinds. `node scripts/demo-sourced-brief.cjs` runs a labelled offline protocol-double demonstration in a fresh temporary workspace, prints evidence locations and leaves the task awaiting approval; it never sends an API request or auto-approves.
 
 Source manager/specialist calls use an internal bounded responseMode=json system instruction; ordinary ai_draft remains responseMode=text. This switch is server-owned, not a client API field or arbitrary system-prompt input. Transient error classification applies to both local and cloud adapters.
+
+## Installed OpenCode worker pilot
+
+Optional provider ID `opencode` executes the installed official CLI rather than calling Console Free endpoints directly. Enable only through trusted process configuration:
+
+- `STUDIO_OPENCODE_BINARY`: absolute installed executable; on this Mac /Applications/OpenCode.app/Contents/Resources/opencode-cli.
+- `STUDIO_OPENCODE_MODEL`: exact advertised Free ID, e.g. opencode/glm-5.3-flash-free. Free-suffixed model IDs and the explicitly listed Big Pickle are eligible; probe must advertise the exact selection.
+- `STUDIO_PROVIDER_ORDER=opencode` (or a configured route with at most3 providers).
+- Existing `STUDIO_REMOTE_CALL_LIMIT` defaults0 and still applies. `STUDIO_OPENCODE_FREE_QUOTA_EVIDENCE_URL` and `STUDIO_OPENCODE_FREE_QUOTA_UNTIL` use the same operator-attestation policy; these do not prove remaining account quota.
+
+Probe checks CLI version >=2.2.6,<3 and the installed model catalog. CONNECTED records CLI_CATALOG_ONLY. Each dispatch runs a standalone process with an explicit Free model and a one-step text agent. The worker isolates config from inherited overrides and verifies config sources before dispatch. It preserves the existing account and data profile. It denies tools, plugins, MCP and search, with a 45-second generation deadline and bounded output. The executable is launched directly.
+
+Success requires one stop completion, nonempty bounded text, no tool activity and CLI-reported cost0. Provenance records modelVerification=CLI_SELECTED_ONLY, CLI version, session ID, reported cost and relative trace ID. This is not an independently verified provider-returned model ID or billing audit. Source manager/handoffs retain this execution provenance.
+
+Free-limit 429 persists RATE_LIMITED and retryAt across restart. A new task for the rate-limited provider shows the quota reason. A dispatch already in progress can fall back to another configured provider under the existing verified-free eligibility and call cap. The same OpenCode route remains in cooldown. Bounded stdout, stderr and per-call config are kept under the private opencode-worker data directory.
+
+`node scripts/pilot-opencode.cjs --model opencode/<free-id>` runs an explicitly LIVE (not double) source workflow in a fresh temp data directory, max4 dispatch reservations. It leaves approval=null and writes pilot-evidence.json. It exits2 when generation was blocked/failed; that is not a successful model test. This script may make real Free-model requests only when explicitly invoked; it does not add credit/card or change the existing Desktop configuration.
+
+On 09/11/2026 five distinct Free models returned provider.free-limit 429. A later GLM retry through the isolated worker returned the same error with a new reset deadline. The successful full flow uses process protocol fixtures. See docs/reviews/2026-11-09-opencode-pilot-results.md.
